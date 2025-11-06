@@ -55,7 +55,7 @@ const RegisterPage = () => {
     <section className="flex justify-center items-center">
       <form className="bg-primary-foreground/8 rounded-2xl p-12 flex flex-col gap-8" onSubmit={handleSubmit}>
         <header className="flex flex-col gap-2 items-center">
-          <h2 className="font-bold text-3xl">Crie sua conta</h2>
+          <h2 className="font-bold text-3xl">Logue em sua conta</h2>
           <p>Junte-se ao Focuslist e assuma o controle de sua produtividade</p>
         </header>
         <div className="fields flex flex-col gap-5">
@@ -88,7 +88,7 @@ const RegisterPage = () => {
             <p className="text-sm">
               {" "}
               Ainda não possui uma conta?
-              <Link href="/login" className="font-medium text-info">
+              <Link href="/register" className="font-medium text-info">
                 Cadastre-se
               </Link>
             </p>

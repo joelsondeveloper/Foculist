@@ -83,8 +83,18 @@ export const authOptions: AuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.id) {
         session.user.id = token.id as string;
+      }
+      if (token.id) {
+        await dbConnect();
+        const userFromDb = await User.findById(token.id).select(
+          'plan'
+        ).lean() as { plan?: string };
+
+        if (userFromDb && session.user) {
+          session.user.plan = userFromDb.plan;
+        }
       }
       return session;
     },

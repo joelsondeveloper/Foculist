@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 
       if (event.type === "invoice.payment_succeeded") {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = (invoice as any).subscription as string;
 
         // Ignora faturas que não são de uma assinatura (ex: pagamento único)
         if (!subscriptionId) {

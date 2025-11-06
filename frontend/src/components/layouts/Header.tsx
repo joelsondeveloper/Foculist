@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, RefObject } from "react";
 import { Search, LogOut, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fieldMotion } from "@/utils/motions";
@@ -17,8 +17,8 @@ interface HeaderProps {
 const Header = ({ session }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const menuRef = useRef<HTMLDivElement>(null);
-  useClickOutside(menuRef, () => setIsMenuOpen(false));
+  const menuRef = useRef<HTMLElement | null>(null);
+  useClickOutside(menuRef as RefObject<HTMLElement>, () => setIsMenuOpen(false));
 
   const user = session.user;
   const userInitials = user?.name ? user.name.charAt(0).toUpperCase() : "?";

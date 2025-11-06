@@ -17,7 +17,7 @@ interface HeaderProps {
 const Header = ({ session }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const menuRef = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   useClickOutside(menuRef as RefObject<HTMLElement>, () => setIsMenuOpen(false));
 
   const user = session.user;

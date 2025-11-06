@@ -2,20 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import Stripe from "stripe";
 import dbConnect from "@/lib/dbConnect";
-import User from "@/models/User";
+import User, { IUser } from "@/models/User";
 
-async function buffer(readable: any) {
-  const chunks = [];
-  for await (const chunk of readable) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+async function buffer(readable: ReadableStream<Uint8Array> | null) {
+  if (!readable) return Buffer.alloc(0);
+
+  const reader = readable.getReader();
+  const chunks: Uint8Array[] = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) chunks.push(value);
   }
+
   return Buffer.concat(chunks);
 }
 
 const relevantEvents = new Set([
   "checkout.session.completed",
-  "invoice.payment_succeeded",
   "customer.subscription.deleted",
+  "customer.subscription.updated",
 ]);
 
 export async function POST(req: NextRequest) {
@@ -27,14 +34,16 @@ export async function POST(req: NextRequest) {
   try {
     if (!sig || !webhookSecret) {
       return NextResponse.json(
-        { message: "No signature or webhook secret" },
+        { message: "Webhook secret or signature missing." },
         { status: 400 }
       );
     }
     event = stripe.webhooks.constructEvent(buf, sig, webhookSecret);
-  } catch {
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    console.error(`❌ Webhook signature verification failed: ${errorMessage}`);
     return NextResponse.json(
-      { message: "Erro ao construir evento" },
+      { message: `Webhook Error: ${errorMessage}` },
       { status: 400 }
     );
   }
@@ -45,77 +54,59 @@ export async function POST(req: NextRequest) {
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session;
-        const mongoUserId =
-          session.client_reference_id || session.metadata?.mongoUserId;
-        if (!mongoUserId || !session.subscription) return;
+        const mongoUserId = session.client_reference_id;
+        const subscriptionId = session.subscription as string;
+        const stripeCustomerId = session.customer as string;
 
-        const subscription = await stripe.subscriptions.retrieve(
-          session.subscription as string
-        );
-
-        let subscriptionEnd: Date | null = null;
-        if (subscription.current_period_end) {
-          subscriptionEnd = new Date(subscription.current_period_end * 1000);
-        } else {
-          // Define 30 dias após a compra, caso o Stripe não envie
-          subscriptionEnd = new Date();
-          subscriptionEnd.setDate(subscriptionEnd.getDate() + 30);
+        if (!mongoUserId || !subscriptionId || !stripeCustomerId) {
+          console.error(
+            "ERRO: Faltando dados essenciais na sessão de checkout."
+          );
+          return NextResponse.json(
+            { error: "Dados da sessão de checkout incompletos." },
+            { status: 400 }
+          );
         }
 
-        await User.findByIdAndUpdate(mongoUserId, {
+        // --- LÓGICA MANUAL E DIRETA PARA A DATA DE EXPIRAÇÃO ---
+        const subscriptionEndDate = new Date();
+        subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30); // Adiciona 30 dias a partir de agora
+
+        const updateData: Partial<IUser> = {
           plan: "premium",
-          subscriptionId: subscription.id,
-          stripeCustomerId: subscription.customer as string,
-          subscriptionEndDate: subscriptionEnd,
-        });
+          subscriptionId: subscriptionId,
+          stripeCustomerId: stripeCustomerId,
+          subscriptionEndDate: subscriptionEndDate,
+        };
+
+        await User.findByIdAndUpdate(mongoUserId, updateData);
 
         console.log(
-          `✅ Usuário ${mongoUserId} atualizado — plano premium, expiração: ${
-            subscriptionEnd || "N/A"
-          }`
+          `✅ Usuário ${mongoUserId} atualizado para Premium. Expiração definida manualmente para: ${subscriptionEndDate}`
         );
       }
 
       if (event.type === "invoice.payment_succeeded") {
         const invoice = event.data.object as Stripe.Invoice;
         const subscriptionId = invoice.subscription as string;
+
+        // Ignora faturas que não são de uma assinatura (ex: pagamento único)
         if (!subscriptionId) {
-          console.warn("⚠️ Nenhum subscriptionId encontrado na invoice");
-          return NextResponse.json(
-            { message: "Subscription ID ausente" },
-            { status: 400 }
-          );
+          return NextResponse.json({ received: true });
         }
 
-        const subscription = await stripe.subscriptions.retrieve(
-          subscriptionId
-        );
-        const currentPeriodEnd = subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000)
-          : null;
+        // Lógica de data manual/fallback para a renovação
+        const newSubscriptionEndDate = new Date();
+        newSubscriptionEndDate.setDate(newSubscriptionEndDate.getDate() + 30);
 
-        const updateData: any = { subscriptionId: subscription.id };
-        if (currentPeriodEnd && !isNaN(currentPeriodEnd.getTime())) {
-          updateData.subscriptionEndDate = currentPeriodEnd;
-        }
-
-        const updatedUser = await User.findOneAndUpdate(
-          { subscriptionId: subscription.id },
-          updateData,
-          { new: true }
+        await User.findOneAndUpdate(
+          { subscriptionId: subscriptionId },
+          { subscriptionEndDate: newSubscriptionEndDate }
         );
 
-        if (updatedUser) {
-          console.log(
-            `✅ Assinatura atualizada com sucesso — userId: ${
-              updatedUser._id
-            }, expira em: ${updateData.subscriptionEndDate || "N/A"}`
-          );
-        } else {
-          console.error(
-            `❌ Nenhum usuário encontrado com subscriptionId ${subscription.id}`
-          );
-        }
+        console.log(
+          `✅ Assinatura ${subscriptionId} renovada. Nova expiração definida para: ${newSubscriptionEndDate}`
+        );
       }
     } catch (error) {
       console.error("ERRO NO PROCESSAMENTO DO WEBHOOK:", error);
@@ -126,5 +117,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ received: true }, { status: 200 });
+  return NextResponse.json({ received: true });
 }

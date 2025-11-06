@@ -54,6 +54,7 @@ export async function POST(req: Request) {
       metadata: {
         mongoUserId: userId,
       },
+      expand: ['subscription'],
     });
 
     if (stripeSession.url) {

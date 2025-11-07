@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       },
     ];
 
-    let finalAgentResponse: AgentResponse;
+    let finalAgentResponse: AgentResponse | null = null;
     let attempt = 0;
 
     while (attempt < MAX_RETRIES + 1) {

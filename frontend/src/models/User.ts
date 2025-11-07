@@ -6,7 +6,7 @@ export interface IUser extends mongoose.Document {
     password?: string;
     emailVerified: Date;
     image: string;
-    plan: string;
+    plan: 'free' | 'premium';
     stripeCustomerId: string;
     subscriptionId: string;
     subscriptionEndDate: Date;
@@ -36,6 +36,7 @@ const UserSchema = new Schema<IUser>({
     },
     plan: {
       type: String,
+      enum: ['free', 'premium'],
       default: 'free'
     },
     stripeCustomerId: {

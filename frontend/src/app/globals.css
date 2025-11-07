@@ -153,3 +153,21 @@ select option {
   color: var(--foreground); /* texto branco */
   border: none;
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #333; /* Cor do fundo da barra de rolagem */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #6b46c1; /* Cor da barra de rolagem (ex: indigo-600 do tailwind) */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #5a3a9a; /* Cor da barra de rolagem ao passar o mouse */
+}

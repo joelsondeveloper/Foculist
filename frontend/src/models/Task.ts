@@ -3,7 +3,7 @@ import mongoose, {Schema, Document, Types} from "mongoose";
 export interface ITask extends Document {
     title: string;
     description: string;
-    date: Date;
+    date?: Date;
     status: string;
     userId: Types.ObjectId
   }

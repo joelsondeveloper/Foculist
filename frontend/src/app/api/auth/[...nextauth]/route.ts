@@ -82,7 +82,10 @@ export const authOptions: AuthOptions = {
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token, trigger }) {
+      if (trigger === "update") {
+        return session;
+      }
       if (session.user && token.id) {
         session.user.id = token.id as string;
       }

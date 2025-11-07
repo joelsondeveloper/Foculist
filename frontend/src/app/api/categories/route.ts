@@ -3,8 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import dbConnect from "@/lib/dbConnect";
 import Category from "@/models/Category";
-import { ObjectId } from "mongodb";
+import User from "@/models/User";
+import { isUserPremium } from "@/lib/subscribtionUtils";
 
+const MAX_FREE_CATEGORIES = 4;
 
 export async function GET() {
 
@@ -34,6 +36,19 @@ export async function POST(request: NextRequest) {
         if (!title) {
             return NextResponse.json({ sucess: false, message: 'Título é obrigatório' }, { status: 400 });
         }
+
+        const user = await User.findById(session.user.id);
+        if (!user) {
+            return NextResponse.json({ sucess: false, message: 'Usuário não encontrado' }, { status: 404 });
+        }
+
+        if (!isUserPremium(user)) {
+            const existingCategoriesCount = await Category.countDocuments({ userId: session.user.id });
+            if (existingCategoriesCount >= MAX_FREE_CATEGORIES) {
+                return NextResponse.json({ sucess: false, message: `Limite de ${MAX_FREE_CATEGORIES} colunas atingido para o plano gratuito. Faça upgrade para criar mais.` }, { status: 403 });
+            }
+        }
+
         const category = await Category.create({ title, color: color || '#888', userId: session.user.id });
         return NextResponse.json({ sucess: true, data: category }, { status: 201 });
     } catch (error) {
@@ -51,7 +66,7 @@ export async function PUT(request: NextRequest  ) {
     try {
         const { id, title, color } = await request.json();
 
-        if (!id || !title) {
+        if (!id) {
             return NextResponse.json({ sucess: false, message: 'ID e título são obrigatórios' }, { status: 400 });
         }
 

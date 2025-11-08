@@ -13,6 +13,7 @@ interface FormFieldProps {
       | React.ChangeEvent<HTMLTextAreaElement>
       | React.ChangeEvent<HTMLSelectElement>
   ) => void;
+  required?: boolean;
 }
 
 const FormField = ({
@@ -22,14 +23,20 @@ const FormField = ({
   value,
   options,
   onChange,
+  required = false,
 }: FormFieldProps) => {
   const isTextArea = type === "area";
   const baseClass =
     "w-full px-4 py-2 rounded-xl bg-primary-foreground/13 outline-0 focus:ring-2 focus:ring-primary/30 transition";
 
+  const isRequired = required;
+
   return (
     <label className="flex flex-col gap-2">
-      <span className="font-medium text-sm">{label}</span>
+      <div>
+        <span className="font-medium text-sm">{label}</span>
+        <span className="text-warning">{isRequired && "*"}</span>
+      </div>
 
       {/* Textarea */}
       {isTextArea && (

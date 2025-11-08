@@ -119,7 +119,7 @@ const TaskCategories = ({ tasks, categories, refreshData }: TaskCategories) => {
                 onDoubleClick={() => handleOpenSettings(category)}
                 className="cursor-pointer" // Indica que é clicável
               >
-                <Category title={category.title} color={category.color} data={tasksInCategory} refreshData={refreshData} categories={categories} />
+                <Category title={category.title} color={category.color} data={tasksInCategory} refreshData={refreshData} categories={categories} showSettings={() => handleOpenSettings(category)} />
               </div>
             );
           })}

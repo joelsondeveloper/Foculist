@@ -65,14 +65,24 @@ export async function POST(request: NextRequest) {
     }, Premium: ${userIsPremium ? "Sim" : "Não"}):`;
     fullPrompt += `\n- Nome: ${context.userName}`;
     fullPrompt += `\n- Email: ${context.userEmail}`;
+    fullPrompt += `\n- Data de hoje: ${new Date().toISOString().split("T")[0]}`;
     fullPrompt += `\n- Categorias (${
       context.categories.length
     } total, limite free: ${MAX_FREE_CATEGORIES}): ${context.categories
       .map((c) => `${c.title} (ID: ${c._id})`)
       .join(", ")}`;
-    fullPrompt += `\n- Tarefas (${context.tasks.length} total): ${context.tasks
-      .map((t) => `${t.title} (ID: ${t._id}, Categoria: ${t.status})`)
-      .join(", ")}`;
+    fullPrompt += `\n- Tarefas (${context.tasks.length} total):`;
+    if (context.tasks.length > 0) {
+      context.tasks.forEach((task) => {
+        const dueDate = task.dueDate
+          ? new Date(task.dueDate).toISOString().split("T")[0]
+          : "N/A";
+        const isCompleted = task.isCompleted ? "Concluída" : "Pendente";
+        fullPrompt += `\n  - [ID: ${task._id}, Título: "${task.title}", Descrição: "${task.description}", Categoria_ID: "${task.status}", Vencimento: ${dueDate}, Prioridade: "${task.priority}", Status: "${isCompleted}"]`;
+      });
+    } else {
+      fullPrompt += ` Nenhuma tarefa cadastrada.`;
+    }
 
     fullPrompt += `\n\nHistórico de Conversa (últimas ${chatHistory.length} mensagens):`;
     chatHistory.forEach((msg) => {
@@ -88,7 +98,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.7,
       topP: 1,
       topK: 1,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 4096,
     };
 
     const safetySettings = [

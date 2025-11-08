@@ -37,7 +37,8 @@ const UserSchema = new Schema<IUser>({
     plan: {
       type: String,
       enum: ['free', 'premium'],
-      default: 'free'
+      default: 'free',
+      required: true
     },
     stripeCustomerId: {
       type: String,

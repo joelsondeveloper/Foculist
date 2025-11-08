@@ -3,9 +3,11 @@ import mongoose, {Schema, Document, Types} from "mongoose";
 export interface ITask extends Document {
     title: string;
     description: string;
-    date?: Date;
     status: string;
     userId: Types.ObjectId
+    dueDate?: Date | null;
+    priority: 'low' | 'medium' | 'high';
+    isCompleted: boolean
   }
 
 const TaskSchema = new Schema<ITask>({
@@ -13,8 +15,10 @@ const TaskSchema = new Schema<ITask>({
       type: String,
       required: true
     },
-    description: String,
-    date: Date,
+    description: {
+      type: String,
+      required: true
+    },
     status: {
       type: String,
       required: true
@@ -24,6 +28,20 @@ const TaskSchema = new Schema<ITask>({
       ref: 'User',
       required: true
     },
-  });
+    dueDate: {
+      type: Date,
+      default: null
+    },
+    priority: {
+      type: String,
+      enum: ['low', 'medium', 'high'],
+      default: 'medium',
+      required: true
+    },
+    isCompleted: {
+      type: Boolean,
+      default: false
+    }
+  }, { timestamps: true });
   
   export default mongoose.models.Task || mongoose.model<ITask>('Task', TaskSchema);

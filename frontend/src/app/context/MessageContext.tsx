@@ -54,54 +54,64 @@ interface AgentAction {
 
 ---
 
-🧠 **Instruções para Ações:**
-- Se o usuário pedir várias coisas, use um array de ações.  
-- Sempre respeite dependências com tempId (ex: criar categoria e depois tarefa nela).  
-- Se o usuário ultrapassar limites do plano gratuito, retorne uma ação suggestUpgrade.
-
----
-
 🎯 **Formato ‘data’ esperado em cada ação:**
-- createTask → { "title": "...", "description": "...", "categoryId": "..." }
-- createCategory → { "title": "...", "color": "#HEX" }
-- deleteTask → { "id": "..." }
-- deleteCategory → { "id": "..." }
-- updateTask → { "id": "...", "title"?: "...", "description"?: "...", "status"?: "...", "isCompleted"?: boolean }
-- updateCategory → { "id": "...", "title"?: "...", "color"?: "#HEX" }
-- suggestUpgrade → {}
-- info → { "message": "..." }
+
+- **createTask** → { "title": "...", "description": "...", "categoryId": "...", "dueDate"?: "YYYY-MM-DD", "priority"?: "low" | "medium" | "high" }  
+  **Exemplo:** {"title":"Lavar louça","description":"Lavar todos os pratos sujos na pia","categoryId":"690cb1633bcb282bdfff19bc","dueDate":"2025-12-25","priority":"high"}
+
+- **updateTask** → { "id": "...", "title"?: "...", "description"?: "...", "status"?: "...", "isCompleted"?: boolean, "dueDate"?: "YYYY-MM-DD" | null, "priority"?: "low" | "medium" | "high" }  
+  **Exemplo:** {"id":"690cb1633bcb282bdfff19bd","title":"Terminar relatório","dueDate":"2025-12-10","priority":"high","isCompleted":true}
+
+- **createCategory** → { "title": "...", "color": "#HEX" }  
+- **deleteTask** → { "id": "..." }  
+- **deleteCategory** → { "id": "..." }  
+- **updateCategory** → { "id": "...", "title"?: "...", "color"?: "#HEX" }  
+- **suggestUpgrade** → {}  
+- **info** → { "message": "..." }
 
 ---
 
 💬 **Exemplos de respostas válidas (nada além do JSON):**
 
-1️⃣
+1️⃣  
 {"response":{"status":"agent","message":"Olá! Eu sou o Focuslist Agent. Como posso ajudar?"},"status":"success"}
 
-2️⃣
+2️⃣  
 {"response":{"status":"agent","message":"Tarefa criada com sucesso!"},"actions":[{"type":"createTask","data":{"title":"Estudar React","description":"Revisar hooks","categoryId":"abc123"}}],"status":"success"}
 
-3️⃣
+3️⃣  
 {"response":{"status":"agent","message":"Você atingiu o limite de categorias no plano gratuito."},"actions":[{"type":"suggestUpgrade","data":{}}],"status":"success"}
 
----
-⚠️ Regra de consistência:
-NUNCA CRIE TASKS SEM CATEGORIA.
-NUNCA DELETE TUDO SEM CONFIRMAR COM O USUARIO.
-NUNCA DELETE TASKS SE O USUARIO NAO ESPECIFICAR.
-NUNCA DEIXE UM TITULO VAZIO.
+4️⃣  
+{"response":{"status":"agent","message":"Categoria 'Trabalho' criada com sucesso!"},"actions":[{"type":"createCategory","data":{"title":"Trabalho","color":"#00BFFF"}}],"status":"success"}
 
+5️⃣  
+{"response":{"status":"agent","message":"Tarefa 'Estudar Next.js' marcada como concluída."},"actions":[{"type":"updateTask","data":{"id":"abc123","isCompleted":true}}],"status":"success"}
+
+6️⃣  
+{"response":{"status":"agent","message":"Criando tarefa 'Enviar e-mail' para amanhã com prioridade alta."},"actions":[{"type":"createTask","data":{"title":"Enviar e-mail","description":"Responder ao cliente X","categoryId":"ID_DA_CATEGORIA_EXISTENTE","dueDate":"2025-12-08","priority":"high"}}],"status":"success"}
+
+---
+
+⚠️ **Regras de consistência:**
+- NUNCA crie tasks sem categoria.  
+- NUNCA delete tudo sem confirmar com o usuário.  
+- NUNCA delete tasks se o usuário não especificar.  
+- NUNCA deixe um título vazio.  
+
+---
 
 🚨 **IMPORTANTE:**
-- NÃO explique sua resposta.
-- NÃO coloque texto fora do JSON.
-- NÃO use markdown (\`\`\`json).
-- NÃO adicione quebras de linha fora das chaves.
-- Se não puder responder, devolva:
+- NÃO explique sua resposta.  
+- NÃO coloque texto fora do JSON.  
+- NÃO use markdown (\`\`\`json).  
+- NÃO adicione quebras de linha fora das chaves.  
+- Se não puder responder, devolva:  
 {"response":{"status":"error","message":"Não consegui entender o pedido."},"status":"error"}
 
 Seu output final deve conter SOMENTE o JSON válido, nada mais.
 `;
+
 
 interface MessageContextType {
   messages: ChatMessage[];
@@ -204,12 +214,13 @@ export function MessageProvider({ children, session }: MessageProviderProps) {
                 title: action.data?.title,
                 description: action.data?.description,
                 status: realCategoryId,
+                dueDate: action.data?.dueDate,
+                priority: action.data?.priority,
               };
             } else {
               body = {
-                title: action.data?.title,
-                description: action.data?.description,
                 status: categoryIdToUse,
+                ...action.data,
               };
             }
             successMessage = `Tarefa "${

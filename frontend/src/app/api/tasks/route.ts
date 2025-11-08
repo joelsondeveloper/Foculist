@@ -3,7 +3,6 @@ import dbConnect from "@/lib/dbConnect";
 import Task from "@/models/Task";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { getServerSession } from "next-auth/next";
-import mongoose from "mongoose";
 
 export async function GET() {
 
@@ -38,9 +37,24 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const task = await Task.create({...body, userId: session.user.id});
+        const {title, description, status, dueDate, priority} = body;
+
+        console.log(body);
+
+        if (!title || !description || !status) {
+            return NextResponse.json({sucess: false, message: "Título, descrição e status (ID da categoria) sao obrigatorios"}, {status: 400});
+        }
+        const task = await Task.create({
+            title,
+            description,
+            status,
+            dueDate: dueDate || null,
+            priority: priority || "medium",
+            userId: session.user.id
+        });
         return NextResponse.json({sucess: true, data: task}, {status: 201});
     } catch (error) {
+        console.log("Erro ao criar tarefa:", error);
         return NextResponse.json({sucess: false, error: error}, {status: 400});
     }
 }
@@ -55,12 +69,20 @@ export async function PUT(request: NextRequest) {
     await dbConnect();
 
     try {
-        const {id, title, description, status} = await request.json();
+        const {id, title, description, status, dueDate, priority, isCompleted} = await request.json();
         if (!id) {
             return NextResponse.json({sucess: false, message: "ID e obrigatorio"}, {status: 400});
         }
 
-        const task = await Task.findOneAndUpdate({_id: id, userId: session.user.id}, {title, description, status}, {new: true});
+         const updates: any = {};
+        if (title !== undefined) updates.title = title;
+        if (description !== undefined) updates.description = description;
+        if (status !== undefined) updates.status = status;
+        if (dueDate !== undefined) updates.dueDate = dueDate;
+        if (priority !== undefined) updates.priority = priority;
+        if (isCompleted !== undefined) updates.isCompleted = isCompleted;
+
+        const task = await Task.findOneAndUpdate({_id: id, userId: session.user.id}, updates, {new: true});
         if (!task) {
             return NextResponse.json({sucess: false, message: "Tarefa nao encontrada ou nao pertence ao usuario"}, {status: 404});
         }

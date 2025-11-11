@@ -6,9 +6,10 @@ export interface ITask extends Document {
     status: string;
     userId: Types.ObjectId
     dueDate?: Date | null;
-    priority: 'low' | 'medium' | 'high';
+    priority?: 'low' | 'medium' | 'high';
     isCompleted: boolean
     order: number
+    isPriorityManual: boolean
   }
 
   export interface ITaskClient {
@@ -18,9 +19,10 @@ export interface ITask extends Document {
   status: string;
   userId: string;
   dueDate?: Date | null;
-  priority: "low" | "medium" | "high";
+  priority?: "low" | "medium" | "high";
   isCompleted: boolean;
   order: number;
+  isPriorityManual: boolean
 }
 
 const TaskSchema = new Schema<ITask>({
@@ -48,8 +50,6 @@ const TaskSchema = new Schema<ITask>({
     priority: {
       type: String,
       enum: ['low', 'medium', 'high'],
-      default: 'medium',
-      required: true
     },
     isCompleted: {
       type: Boolean,
@@ -58,6 +58,11 @@ const TaskSchema = new Schema<ITask>({
     order: {
       type: Number,
       default: 0,
+      required: true
+    },
+    isPriorityManual: {
+      type: Boolean,
+      default: false,
       required: true
     }
   }, { timestamps: true });

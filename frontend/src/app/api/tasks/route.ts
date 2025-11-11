@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const {title, description, status, dueDate, priority} = body;
+        const {title, description, status, dueDate, priority, isCompleted} = body;
 
         console.log(body);
 
@@ -53,7 +53,9 @@ export async function POST(request: Request) {
             description,
             status,
             dueDate: dueDate || null,
-            priority: priority || "medium",
+            priority: (priority === 'low' || priority === 'medium' || priority === 'high') ? priority : null,
+            isPriorityManual: (priority === 'low' || priority === 'medium' || priority === 'high'),
+            isCompleted: isCompleted ?? false,
             userId: session.user.id,
             order: newOrder
         });
@@ -74,7 +76,7 @@ export async function PUT(request: NextRequest) {
     await dbConnect();
 
     try {
-        const {id, title, description, status, dueDate, priority, isCompleted, order} = await request.json();
+        const {id, title, description, status, dueDate, priority, isCompleted, order, isPriorityManual} = await request.json();
         if (!id) {
             return NextResponse.json({sucess: false, message: "ID e obrigatorio"}, {status: 400});
         }
@@ -84,7 +86,17 @@ export async function PUT(request: NextRequest) {
         if (description !== undefined) updates.description = description;
         if (status !== undefined) updates.status = status;
         if (dueDate !== undefined) updates.dueDate = dueDate;
-        if (priority !== undefined) updates.priority = priority;
+        if (priority !== undefined) {
+            if (priority === 'low' || priority === 'medium' || priority === 'high') {
+                updates.priority = priority;
+                updates.isPriorityManual = true;
+            } else if (!priority) {
+                updates.priority = null;
+                updates.isPriorityManual = false;
+            } else {
+                console.warn("Prioridade inválida:", priority);
+            }
+        }
         if (isCompleted !== undefined) updates.isCompleted = isCompleted;
         if (order !== undefined) updates.order = order;
 

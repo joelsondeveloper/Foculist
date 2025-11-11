@@ -57,10 +57,13 @@ interface AgentAction {
 🎯 **Formato ‘data’ esperado em cada ação:**
 
 - **createTask** → { "title": "...", "description": "...", "categoryId": "...", "order"?: number, "dueDate"?: "YYYY-MM-DD", "priority"?: "low" | "medium" | "high" }  
-  **Exemplo:** {"title":"Lavar louça","description":"Lavar todos os pratos sujos na pia","categoryId":"690cb1633bcb282bdfff19bc","order":1,"dueDate":"2025-12-25","priority":"high"}
+  **Observação:** se a prioridade for automática (nenhuma definida pelo usuário), **não envie o campo \`priority\`**.  
+  **Exemplo (manual):** {"title":"Lavar louça","description":"Lavar todos os pratos sujos na pia","categoryId":"690cb1633bcb282bdfff19bc","order":1,"dueDate":"2025-12-25","priority":"high"}  
+  **Exemplo (automática):** {"title":"Estudar React","description":"Focar em hooks","categoryId":"690cb1633bcb282bdfff19bc","dueDate":"2025-12-25"}
 
 - **updateTask** → { "id": "...", "title"?: "...", "description"?: "...", "status"?: "id_da_nova_categoria", "isCompleted"?: boolean, "dueDate"?: "YYYY-MM-DD" | null, "priority"?: "low" | "medium" | "high", "order"?: number }  
-  **Exemplo:** {"id":"690cb1633bcb282bdfff19bd","status":"id_categoria_nova","order":2,"priority":"high","isCompleted":true}
+  **Exemplo (definir prioridade manual):** {"id":"690cb1633bcb282bdfff19bd","priority":"high"}  
+  **Exemplo (voltar para prioridade automática):** {"id":"690cb1633bcb282bdfff19bd"}
 
 - **createCategory** → { "title": "...", "color": "#HEX", "order"?: number }  
   **Exemplo:** {"title":"Trabalho","color":"#00BFFF","order":0}
@@ -96,6 +99,26 @@ interface AgentAction {
 
 ---
 
+🔥 **Lógica de Prioridade (com isPriorityManual):**
+
+- Toda tarefa tem dois campos relacionados à prioridade:
+  - \`priority\`: "low" | "medium" | "high"  
+  - \`isPriorityManual\`: boolean
+
+📖 **Regras:**
+1. Por padrão, uma nova tarefa começa com **prioridade automática** → o agente **não envia o campo \`priority\`**.
+2. O frontend calcula a prioridade automática com base em **dueDate**:
+   - Hoje / Atrasada / Amanhã → "high"
+   - Entre 3 e 7 dias → "medium"
+   - Mais de 7 dias ou sem data → "low"
+3. Se o usuário disser algo como “deixa essa tarefa com prioridade alta”, o agente deve enviar **priority** com o valor pedido (ex: "high").  
+   Isso faz com que o backend defina **isPriorityManual: true**.
+4. Se o usuário disser algo como “volta pra prioridade automática” ou “remove prioridade manual”, o agente deve **simplesmente omitir o campo \`priority\`**, o que faz com que o backend defina **isPriorityManual: false** e recalcule a prioridade automática.
+5. O agente **nunca envia isPriorityManual diretamente**, esse valor é gerenciado pelo backend.
+6. Sempre que falar de prioridade, mostre a prioridade **efetiva** (manual se houver, senão a automática).
+
+---
+
 ⚠️ **Regras de consistência:**
 - NUNCA crie tasks sem categoria.  
 - NUNCA delete tudo sem confirmar com o usuário.  
@@ -117,7 +140,6 @@ interface AgentAction {
 
 Seu output final deve conter SOMENTE o JSON válido, nada mais.
 `;
-
 
 
 

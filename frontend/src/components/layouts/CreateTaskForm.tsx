@@ -18,7 +18,7 @@ const CreateTaskForm = ({ onTaskCreated, categories }: CreateTaskFormProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [priority, setPriority] = useState<"low" | "medium" | "high">('medium');
+  // const [priority, setPriority] = useState<"low" | "medium" | "high">('medium');
   const [dueDate, setDueDate] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
@@ -45,7 +45,7 @@ const CreateTaskForm = ({ onTaskCreated, categories }: CreateTaskFormProps) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title, description, status: selectedCategory, priority, dueDate: dueDate || null }),
+        body: JSON.stringify({ title, description, status: selectedCategory, dueDate: dueDate || null }),
       });
 
       const data = await res.json();
@@ -61,7 +61,7 @@ const CreateTaskForm = ({ onTaskCreated, categories }: CreateTaskFormProps) => {
       addMessage(`Tarefa "${title}" criada com sucesso`, "success");
       setTitle("");
       setDescription("");
-      setPriority("medium");
+      // setPriority("medium");
       setDueDate("");
       onTaskCreated();
     } catch (error) {
@@ -112,7 +112,7 @@ const CreateTaskForm = ({ onTaskCreated, categories }: CreateTaskFormProps) => {
             />
           )}
         </div>
-        <FormField
+        {/* <FormField
           label="Prioridade"
           type="select"
           value={priority}
@@ -122,7 +122,7 @@ const CreateTaskForm = ({ onTaskCreated, categories }: CreateTaskFormProps) => {
             { value: "high", label: "High" },
           ]}
           onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
-        />
+        /> */}
         <FormField
           label="Data Limite"
           type="date"

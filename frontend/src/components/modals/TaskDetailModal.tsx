@@ -6,6 +6,7 @@ import { ICategory, ICategoryClient } from "@/models/Category";
 import { ITask, ITaskClient } from "@/models/Task";
 import { customStyles } from "@/app/utils/customStylesModal";
 import { useMessages } from "@/app/context/MessageContext";
+import { calculatePriority } from "@/lib/taskPriorityUtils";
 
 if (typeof window !== "undefined") {
   Modal.setAppElement("#root");
@@ -32,7 +33,7 @@ const TaskDetailModal = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [priority, setPriority] = useState<"low" | "medium" | "high" | null>(null);
   const [dueDate, setDueDate] = useState<string>("");
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,7 @@ const TaskDetailModal = ({
       setTitle(task.title);
       setDescription(task.description || "");
       setSelectedCategory(task.status);
-      setPriority(task.priority || "medium");
+      setPriority(task.priority || null);
       setDueDate(
         task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : ""
       );
@@ -56,6 +57,9 @@ const TaskDetailModal = ({
   if (!task) {
     return null;
   }
+
+  const calculatedPriority = calculatePriority(dueDate ? new Date(dueDate) : null, isCompleted);
+  const displayPriority = task.isPriorityManual ? (priority || "medium") : calculatedPriority;
 
   const handleEditClick = () => {
     setIsEditing(true);
@@ -100,7 +104,7 @@ const TaskDetailModal = ({
         title,
         description,
         status: selectedCategory,
-        priority,
+        priority: priority || undefined,
         dueDate: dueDate ? new Date(dueDate) : undefined,
         isCompleted,
       });
@@ -190,17 +194,18 @@ const TaskDetailModal = ({
             htmlFor="taskPriority"
             className="block text-sm font-medium mb-1"
           >
-            Prioridade
+            Prioridade ({task.isPriorityManual ? 'Manual' : `Automática: ${calculatedPriority === 'low' ? 'Baixa' : calculatedPriority === 'medium' ? 'Média' : 'Alta'}`})
           </label>
           <select
             id="taskPriority"
-            value={priority}
+            value={priority === null ? 'null' : priority}
             onChange={(e) =>
-              setPriority(e.target.value as "low" | "medium" | "high")
+              setPriority(e.target.value === 'null' ? null : e.target.value as 'low' | 'medium' | 'high')
             }
             disabled={!isEditing}
             className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
+            <option value="null">Automatica</option>
             <option value="low">Baixa</option>
             <option value="medium">Média</option>
             <option value="high">Alta</option>

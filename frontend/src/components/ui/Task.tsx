@@ -2,17 +2,17 @@
 
 import React from "react";
 import { Draggable } from "@hello-pangea/dnd";
-import { ITask } from "@/models/Task";
+import { ITask, ITaskClient } from "@/models/Task";
 import { Check, MoreVertical, Flag, CalendarDays } from "lucide-react";
 import { format, isToday, isTomorrow, isPast, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface TaskProps {
-  task: ITask;
+  task: ITaskClient;
   index: number;
   color: string;
   handleUpdateTaskStatus: (id: string, isCompleted: boolean) => void;
-  handleTaskClick: (task: ITask) => void;
+  handleTaskClick: (task: ITaskClient) => void;
   getPriorityColorClass: (priority: ITask["priority"]) => string;
 }
 

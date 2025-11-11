@@ -1,5 +1,5 @@
-import { ICategory } from "@/models/Category";
-import { ITask } from "@/models/Task";
+import { ICategory, ICategoryClient } from "@/models/Category";
+import { ITask, ITaskClient } from "@/models/Task";
 
 export interface AgentRequest {
   masterPrompt: string;
@@ -8,8 +8,8 @@ export interface AgentRequest {
     userName: string;
     userEmail: string;
     userPlan: string;
-    categories: ICategory[];
-    tasks: ITask[];
+    categories: ICategoryClient[];
+    tasks: ITaskClient[];
   };
   userMessage: string;
   chatHistory: Array<{

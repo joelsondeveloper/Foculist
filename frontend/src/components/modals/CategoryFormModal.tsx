@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Modal from "react-modal";
-import { ICategory } from "@/models/Category";
+import { ICategory, ICategoryClient } from "@/models/Category";
 import { customStyles } from "@/app/utils/customStylesModal";
 
 interface CategoryFormData {
@@ -14,7 +14,7 @@ interface CategoryFormData {
 interface CategoryFormModalProps {
   isOpen: boolean;
   onRequestClose: () => void;
-  categoryToEdit: ICategory | null;
+  categoryToEdit: ICategoryClient | null;
   onSave: (data: CategoryFormData) => void;
   loading: boolean;
 }

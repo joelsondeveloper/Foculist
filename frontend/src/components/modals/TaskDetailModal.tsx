@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Modal from "react-modal";
-import { ICategory } from "@/models/Category";
-import { ITask } from "@/models/Task";
+import { ICategory, ICategoryClient } from "@/models/Category";
+import { ITask, ITaskClient } from "@/models/Task";
 import { customStyles } from "@/app/utils/customStylesModal";
 import { useMessages } from "@/app/context/MessageContext";
 
@@ -14,9 +14,9 @@ if (typeof window !== "undefined") {
 interface TaskDetailModalProps {
   isOpen: boolean;
   onRequestClose: () => void;
-  task: ITask | null;
-  categories: ICategory[];
-  onSave: (taskData: Partial<ITask> & { id: string }) => Promise<void>;
+  task: ITaskClient | null;
+  categories: ICategoryClient[];
+  onSave: (taskData: Partial<ITaskClient> & { id: string }) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
 }
 

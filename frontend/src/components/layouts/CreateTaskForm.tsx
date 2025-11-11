@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import FormField from "../ui/FormField";
 import ButtonGeneral from "../ui/ButtonGeneral";
-import { ICategory } from "@/models/Category";
+import { ICategory, ICategoryClient } from "@/models/Category";
 
 import { Plus } from "lucide-react";
 import { useMessages } from "@/app/context/MessageContext";
@@ -11,7 +11,7 @@ import { u } from "framer-motion/client";
 
 interface CreateTaskFormProps {
   onTaskCreated: () => void;
-  categories: ICategory[];
+  categories: ICategoryClient[];
 }
 
 const CreateTaskForm = ({ onTaskCreated, categories }: CreateTaskFormProps) => {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Category from "../ui/Category";
-import { ITask } from "@/models/Task";
-import { ICategory } from "@/models/Category";
+import { ITask, ITaskClient } from "@/models/Task";
+import { ICategory, ICategoryClient } from "@/models/Category";
 import CategorySettingsModal from "../modals/CategorySettingsModal";
 import CategoryFormModal from "../modals/CategoryFormModal";
 import ButtonGeneral from "../ui/ButtonGeneral";
@@ -9,19 +9,19 @@ import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { useMessages } from "@/app/context/MessageContext";
 
 interface TaskCategories {
-  tasks: { [key: string]: ITask[] };
-  categories: ICategory[];
+  tasks: { [key: string]: ITaskClient[] };
+  categories: ICategoryClient[];
   refreshData: () => void;
-  onCategoriesReordered: (newCategories: ICategory[]) => Promise<void>;
+  onCategoriesReordered: (newCategories: ICategoryClient[]) => Promise<void>;
 }
 
 const TaskCategories = ({ tasks, categories, refreshData }: TaskCategories) => {
   const [moadlIsOpen, setModalIsOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<ICategory | null>(
+  const [selectedCategory, setSelectedCategory] = useState<ICategoryClient | null>(
     null
   );
   const [formModalIsOpen, setFormModalIsOpen] = useState(false);
-  const [categoryToEdit, setCategoryToEdit] = useState<ICategory | null>(null);
+  const [categoryToEdit, setCategoryToEdit] = useState<ICategoryClient | null>(null);
   const [saving, setSaving] = useState(false);
 
   const { addMessage } = useMessages();
@@ -29,11 +29,6 @@ const TaskCategories = ({ tasks, categories, refreshData }: TaskCategories) => {
   const handleOpenCreateForm = () => {
     setFormModalIsOpen(true);
     setCategoryToEdit(null);
-  };
-
-  const handleOpenEditForm = (category: ICategory) => {
-    setFormModalIsOpen(true);
-    setCategoryToEdit(category);
   };
 
   const handleCloseForm = () => {
@@ -78,7 +73,7 @@ const TaskCategories = ({ tasks, categories, refreshData }: TaskCategories) => {
     setSaving(false);
   };
 
-  const handleOpenSettings = (category: ICategory) => {
+  const handleOpenSettings = (category: ICategoryClient) => {
     setSelectedCategory(category);
     setModalIsOpen(true);
   };
@@ -88,7 +83,7 @@ const TaskCategories = ({ tasks, categories, refreshData }: TaskCategories) => {
     setModalIsOpen(false);
   };
 
-  const handleEditCategory = async (category: ICategory) => {
+  const handleEditCategory = async (category: ICategoryClient) => {
     handleCloseSettings();
     setCategoryToEdit(category);
     setFormModalIsOpen(true);

@@ -1,5 +1,5 @@
 import Modal from "react-modal";
-import { ICategory } from "@/models/Category";
+import { ICategory, ICategoryClient } from "@/models/Category";
 import { customStyles } from "@/app/utils/customStylesModal";
 import CategoryFormModal from "./CategoryFormModal";
 
@@ -10,8 +10,8 @@ if (typeof window !== "undefined") {
 interface CategorySettingsModalProps {
   isOpen: boolean;
   onRequestClose: () => void;
-  category: ICategory | null;
-  onEdit: (category: ICategory) => void;
+  category: ICategoryClient | null;
+  onEdit: (category: ICategoryClient) => void;
   onDelete: (id: string) => void;
 }
 

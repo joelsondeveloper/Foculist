@@ -5,16 +5,16 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import CreateTaskForm from "@/components/layouts/CreateTaskForm";
 import TaskCategories from "@/components/layouts/TaskCategories";
-import { ITask, ITaskClient } from "@/models/Task";
-import { ICategory } from "@/models/Category";
+import { ITaskClient } from "@/models/Task";
+import { ICategoryClient } from "@/models/Category";
 import { useMessages } from "./context/MessageContext";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 
 export default function Home() {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
-  const [tasks, setTasks] = useState<ITask[]>([]);
-  const [categories, setCategories] = useState<ICategory[]>([]);
+  const [tasks, setTasks] = useState<ITaskClient[]>([]);
+  const [categories, setCategories] = useState<ICategoryClient[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { setDynamicContextData, addMessage } = useMessages();
@@ -54,7 +54,14 @@ export default function Home() {
       const categoriesData = await categoriesRes.json();
 
       if (tasksData.sucess) {
-        setTasks(tasksData.data);
+        setTasks(
+          tasksData.data.map((task: any) => ({
+            ...task,
+            _id: String(task._id),
+            userId: String(task.userId),
+            status: String(task.status),
+          }))
+        );
       } else {
         addMessage(
           tasksData.message || "Ocorreu um erro ao buscar as tarefas",
@@ -64,9 +71,15 @@ export default function Home() {
 
       if (categoriesData.sucess) {
         setCategories(
-          categoriesData.data.sort(
-            (a: ICategory, b: ICategory) => a.order - b.order
-          )
+          categoriesData.data
+            .map((cat: any) => ({
+              _id: String(cat._id),
+              title: cat.title,
+              color: cat.color,
+              order: cat.order,
+              userId: String(cat.userId),
+            }))
+            .sort((a: ICategoryClient, b: ICategoryClient) => a.order - b.order)
         );
       } else {
         addMessage(
@@ -110,7 +123,7 @@ export default function Home() {
   };
 
   const onCategoriesReordered = useCallback(
-    async (newCategories: ICategory[]) => {
+    async (newCategories: ICategoryClient[]) => {
       const updatePromises: Promise<Response>[] = [];
 
       newCategories.forEach((category, index) => {
@@ -156,7 +169,13 @@ export default function Home() {
       newCategories.splice(destination.index, 0, reorderedCategory);
 
       setCategories(
-        newCategories.map((cat, index) => ({ ...cat, order: index }))
+        newCategories.map((cat, index) => ({
+          _id: String(cat._id),
+          title: cat.title,
+          color: cat.color,
+          order: index,
+          userId: String(cat.userId),
+        }))
       );
 
       try {
@@ -220,11 +239,13 @@ export default function Home() {
 
     const movedTaskClone: ITaskClient = {
       ...draggedTask,
+      _id: String(draggedTask._id),
+      userId: String(draggedTask.userId),
       status: String(finishCategory._id),
     };
 
-    let finalSourceTasks: ITask[] = [];
-    let finalDestinationTasks: ITask[] = [];
+    let finalSourceTasks: ITaskClient[] = [];
+    let finalDestinationTasks: ITaskClient[] = [];
 
     if (source.droppableId === destination.droppableId) {
       finalSourceTasks = Array.from(sourceTasksInPlay);
@@ -298,14 +319,14 @@ export default function Home() {
     return null;
   }
 
-  const tasksByCategoryId: { [key: string]: ITask[] } = categories.reduce(
+  const tasksByCategoryId: { [key: string]: ITaskClient[] } = categories.reduce(
     (acc, category) => {
       acc[String(category._id)] = tasks
         .filter((task) => String(task.status) === String(category._id))
         .sort((a, b) => a.order - b.order);
       return acc;
     },
-    {} as { [key: string]: ITask[] }
+    {} as { [key: string]: ITaskClient[] }
   );
 
   return (

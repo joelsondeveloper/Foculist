@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { ITask } from "@/models/Task";
-import { ICategory } from "@/models/Category";
+import { ITask, ITaskClient } from "@/models/Task";
+import { ICategory, ICategoryClient } from "@/models/Category";
 import TaskDetailModal from "../modals/TaskDetailModal";
 import { useMessages } from "@/app/context/MessageContext";
 
@@ -20,9 +20,9 @@ import Task from "./Task";
 interface CategoryProps {
   title: string;
   color: string;
-  data: ITask[];
+  data: ITaskClient[];
   refreshData: () => void;
-  categories: ICategory[];
+  categories: ICategoryClient[];
   showSettings: () => void;
   categoryId: string;
   provided: DraggableProvided;
@@ -41,18 +41,18 @@ const Category = ({
   snapshot,
 }: CategoryProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<ITask | null>(null);
+  const [selectedTask, setSelectedTask] = useState<ITaskClient | null>(null);
 
   const { addMessage } = useMessages();
 
   // 👉 Abre o modal e seleciona a task
-  const handleTaskClick = (task: ITask) => {
+  const handleTaskClick = (task: ITaskClient) => {
     setSelectedTask(task);
     setIsModalOpen(true);
   };
 
   const handleUpdateTask = async (
-    taskData: Partial<ITask> & { id: string }
+    taskData: Partial<ITaskClient> & { id: string }
   ) => {
     try {
       const res = await fetch(`/api/tasks`, {
@@ -109,7 +109,7 @@ const Category = ({
   };
 
   // 👉 Define cor de prioridade
-  const getPriorityColorClass = (priority: ITask["priority"]) => {
+  const getPriorityColorClass = (priority: ITaskClient["priority"]) => {
     switch (priority) {
       case "low":
         return "text-green-500";

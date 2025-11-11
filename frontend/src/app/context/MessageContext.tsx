@@ -9,8 +9,8 @@ import {
   useEffect,
 } from "react";
 import { AgentRequest, AgentResponse, AgentAction } from "../interfaces/agents";
-import { ICategory } from "@/models/Category";
-import { ITask } from "@/models/Task";
+import { ICategory, ICategoryClient } from "@/models/Category";
+import { ITask, ITaskClient } from "@/models/Task";
 import { Session } from "next-auth";
 
 export interface ChatMessage {
@@ -131,8 +131,8 @@ interface MessageContextType {
   clearMessages: () => void;
   sendUserMessageToAgent: (userMessage: string) => Promise<void>;
   setDynamicContextData: (
-    categories: ICategory[],
-    tasks: ITask[],
+    categories: ICategoryClient[],
+    tasks: ITaskClient[],
     refreshData: () => void
   ) => void;
 }
@@ -147,8 +147,8 @@ interface MessageProviderProps {
 export function MessageProvider({ children, session }: MessageProviderProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  const [dynamicCategories, setDynamicCategories] = useState<ICategory[]>([]);
-  const [dynamicTasks, setDynamicTasks] = useState<ITask[]>([]);
+  const [dynamicCategories, setDynamicCategories] = useState<ICategoryClient[]>([]);
+  const [dynamicTasks, setDynamicTasks] = useState<ITaskClient[]>([]);
   const [dynamicRefreshData, setDynamicRefreshData] = useState<
     (() => void) | null
   >(null);
@@ -176,7 +176,7 @@ export function MessageProvider({ children, session }: MessageProviderProps) {
   }, []);
 
   const setDynamicContextData = useCallback(
-    (categories: ICategory[], tasks: ITask[], refreshData: () => void) => {
+    (categories: ICategoryClient[], tasks: ITaskClient[], refreshData: () => void) => {
       setDynamicCategories(categories);
       setDynamicTasks(tasks);
       setDynamicRefreshData(() => refreshData);

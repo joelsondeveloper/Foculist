@@ -7,6 +7,14 @@ export interface ICategory extends Document {
     order: number
 }
 
+export interface ICategoryClient {
+  _id: string;
+  title: string;
+  color: string;
+  order: number;
+  userId: string;
+}
+
 const CategorySchema = new Schema<ICategory>({
     title: {
         type: String,

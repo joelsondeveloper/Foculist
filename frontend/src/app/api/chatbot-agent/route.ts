@@ -78,7 +78,8 @@ export async function POST(request: NextRequest) {
           ? new Date(task.dueDate).toISOString().split("T")[0]
           : "N/A";
         const isCompleted = task.isCompleted ? "Concluída" : "Pendente";
-        fullPrompt += `\n  - [ID: ${task._id}, Título: "${task.title}", Descrição: "${task.description}", Categoria_ID: "${task.status}", Vencimento: ${dueDate}, Prioridade: "${task.priority}", Status: "${isCompleted}"]`;
+        fullPrompt += `\n  - [ID: ${task._id}, Título: "${task.title}", Descrição: "${task.description}", Categoria_ID: "${task.status}", Vencimento: ${dueDate}, Prioridade: "${task.priority}", Status: "${isCompleted}"],
+        Ordenação: ${task.order}`;
       });
     } else {
       fullPrompt += ` Nenhuma tarefa cadastrada.`;

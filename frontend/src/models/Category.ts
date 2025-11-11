@@ -4,6 +4,7 @@ export interface ICategory extends Document {
     title: string;
     color: string;
     userId: Types.ObjectId;
+    order: number
 }
 
 const CategorySchema = new Schema<ICategory>({
@@ -21,6 +22,11 @@ const CategorySchema = new Schema<ICategory>({
         ref: 'User',
         required: true
     },
+    order: {
+        type: Number,
+        default: 0,
+        required: true
+    }
 });
 
 export default mongoose.models.Category || mongoose.model<ICategory>('Category', CategorySchema);

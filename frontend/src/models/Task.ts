@@ -8,7 +8,20 @@ export interface ITask extends Document {
     dueDate?: Date | null;
     priority: 'low' | 'medium' | 'high';
     isCompleted: boolean
+    order: number
   }
+
+  export interface ITaskClient {
+  _id: string;
+  title: string;
+  description: string;
+  status: string;
+  userId: string;
+  dueDate?: Date | null;
+  priority: "low" | "medium" | "high";
+  isCompleted: boolean;
+  order: number;
+}
 
 const TaskSchema = new Schema<ITask>({
     title: {
@@ -41,6 +54,11 @@ const TaskSchema = new Schema<ITask>({
     isCompleted: {
       type: Boolean,
       default: false
+    },
+    order: {
+      type: Number,
+      default: 0,
+      required: true
     }
   }, { timestamps: true });
   

@@ -17,7 +17,7 @@ export async function GET() {
 
     await dbConnect();
     try {
-        const categories = await Category.find({userId: session.user.id});
+        const categories = await Category.find({userId: session.user.id}).sort({order: 1});
         return NextResponse.json({ sucess: true, data: categories });
     } catch (error) {
         return NextResponse.json({ sucess: false, message: 'Erro ao buscar categorias' }, { status: 500 });
@@ -49,7 +49,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const category = await Category.create({ title, color: color || '#888', userId: session.user.id });
+        const userCategoriesCount = await Category.countDocuments({ userId: session.user.id });
+        const newOrder = userCategoriesCount;
+
+        const category = await Category.create({ title, color: color || '#888', userId: session.user.id, order: newOrder });
         return NextResponse.json({ sucess: true, data: category }, { status: 201 });
     } catch (error) {
         return NextResponse.json({ sucess: false, message: 'Erro ao criar categoria' }, { status: 500 });
@@ -64,7 +67,7 @@ export async function PUT(request: NextRequest  ) {
 
     await dbConnect();
     try {
-        const { id, title, color } = await request.json();
+        const { id, title, color, order } = await request.json();
 
         if (!id) {
             return NextResponse.json({ sucess: false, message: 'ID e título são obrigatórios' }, { status: 400 });
@@ -72,7 +75,7 @@ export async function PUT(request: NextRequest  ) {
 
         
 
-        const category = await Category.findOneAndUpdate({ _id: id, userId: session.user.id }, { title, color }, { new: true });
+        const category = await Category.findOneAndUpdate({ _id: id, userId: session.user.id }, { title, color, order }, { new: true });
         if (!category) {
             return NextResponse.json({ sucess: false, message: 'Categoria não encontrada ou não pertence ao usuário' }, { status: 404 });
         }

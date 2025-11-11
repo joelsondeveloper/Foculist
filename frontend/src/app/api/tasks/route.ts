@@ -16,7 +16,7 @@ export async function GET() {
     
     try {
         
-        const tasks = await Task.find({userId: session.user.id});
+        const tasks = await Task.find({userId: session.user.id}).sort({order: 1});
         return NextResponse.json({sucess: true, data: tasks});
 
     } catch (error) {
@@ -44,13 +44,18 @@ export async function POST(request: Request) {
         if (!title || !description || !status) {
             return NextResponse.json({sucess: false, message: "Título, descrição e status (ID da categoria) sao obrigatorios"}, {status: 400});
         }
+
+        const tasksInCurrentCategory = await Task.find({userId: session.user.id, status}).countDocuments();
+        const newOrder = tasksInCurrentCategory;
+
         const task = await Task.create({
             title,
             description,
             status,
             dueDate: dueDate || null,
             priority: priority || "medium",
-            userId: session.user.id
+            userId: session.user.id,
+            order: newOrder
         });
         return NextResponse.json({sucess: true, data: task}, {status: 201});
     } catch (error) {
@@ -69,7 +74,7 @@ export async function PUT(request: NextRequest) {
     await dbConnect();
 
     try {
-        const {id, title, description, status, dueDate, priority, isCompleted} = await request.json();
+        const {id, title, description, status, dueDate, priority, isCompleted, order} = await request.json();
         if (!id) {
             return NextResponse.json({sucess: false, message: "ID e obrigatorio"}, {status: 400});
         }
@@ -81,6 +86,7 @@ export async function PUT(request: NextRequest) {
         if (dueDate !== undefined) updates.dueDate = dueDate;
         if (priority !== undefined) updates.priority = priority;
         if (isCompleted !== undefined) updates.isCompleted = isCompleted;
+        if (order !== undefined) updates.order = order;
 
         const task = await Task.findOneAndUpdate({_id: id, userId: session.user.id}, updates, {new: true});
         if (!task) {

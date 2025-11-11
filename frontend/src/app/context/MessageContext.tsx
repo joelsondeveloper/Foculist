@@ -56,40 +56,43 @@ interface AgentAction {
 
 🎯 **Formato ‘data’ esperado em cada ação:**
 
-- **createTask** → { "title": "...", "description": "...", "categoryId": "...", "dueDate"?: "YYYY-MM-DD", "priority"?: "low" | "medium" | "high" }  
-  **Exemplo:** {"title":"Lavar louça","description":"Lavar todos os pratos sujos na pia","categoryId":"690cb1633bcb282bdfff19bc","dueDate":"2025-12-25","priority":"high"}
+- **createTask** → { "title": "...", "description": "...", "categoryId": "...", "order"?: number, "dueDate"?: "YYYY-MM-DD", "priority"?: "low" | "medium" | "high" }  
+  **Exemplo:** {"title":"Lavar louça","description":"Lavar todos os pratos sujos na pia","categoryId":"690cb1633bcb282bdfff19bc","order":1,"dueDate":"2025-12-25","priority":"high"}
 
-- **updateTask** → { "id": "...", "title"?: "...", "description"?: "...", "status"?: "...", "isCompleted"?: boolean, "dueDate"?: "YYYY-MM-DD" | null, "priority"?: "low" | "medium" | "high" }  
-  **Exemplo:** {"id":"690cb1633bcb282bdfff19bd","title":"Terminar relatório","dueDate":"2025-12-10","priority":"high","isCompleted":true}
+- **updateTask** → { "id": "...", "title"?: "...", "description"?: "...", "status"?: "id_da_nova_categoria", "isCompleted"?: boolean, "dueDate"?: "YYYY-MM-DD" | null, "priority"?: "low" | "medium" | "high", "order"?: number }  
+  **Exemplo:** {"id":"690cb1633bcb282bdfff19bd","status":"id_categoria_nova","order":2,"priority":"high","isCompleted":true}
 
-- **createCategory** → { "title": "...", "color": "#HEX" }  
+- **createCategory** → { "title": "...", "color": "#HEX", "order"?: number }  
+  **Exemplo:** {"title":"Trabalho","color":"#00BFFF","order":0}
+
+- **updateCategory** → { "id": "...", "title"?: "...", "color"?: "#HEX", "order"?: number }  
+  **Exemplo:** {"id":"categ123","title":"Pessoal","order":3}
+
 - **deleteTask** → { "id": "..." }  
 - **deleteCategory** → { "id": "..." }  
-- **updateCategory** → { "id": "...", "title"?: "...", "color"?: "#HEX" }  
 - **suggestUpgrade** → {}  
 - **info** → { "message": "..." }
 
 ---
 
-💬 **Exemplos de respostas válidas (nada além do JSON):**
+🧱 **Mecânica de movimentação (drag & drop e ordenação):**
+- Tanto **tasks** quanto **categories** possuem um campo numérico chamado **order**, que define sua posição.  
+- Quando o usuário move uma task ou categoria, atualize o campo **order** conforme a nova posição.  
+- A movimentação deve ser feita utilizando a ação **updateTask** ou **updateCategory**, passando o **id** e o **novo valor de order**.  
+  **Exemplo:**  
+  {"response":{"status":"agent","message":"Tarefa movida com sucesso!"},"actions":[{"type":"updateTask","data":{"id":"task123","order":2}}],"status":"success"}  
+  {"response":{"status":"agent","message":"Categoria reordenada."},"actions":[{"type":"updateCategory","data":{"id":"cat456","order":1}}],"status":"success"}
 
-1️⃣  
-{"response":{"status":"agent","message":"Olá! Eu sou o Focuslist Agent. Como posso ajudar?"},"status":"success"}
+📦 **Movimentação entre categorias:**
+- Se uma task for movida para **outra categoria**, use o campo **status** para indicar o **id da categoria de destino**, junto com o novo **order**.  
+  **Exemplo:**  
+  {"response":{"status":"agent","message":"Tarefa movida para outra categoria."},"actions":[{"type":"updateTask","data":{"id":"task999","status":"id_categoria_nova","order":0}}],"status":"success"}
 
-2️⃣  
-{"response":{"status":"agent","message":"Tarefa criada com sucesso!"},"actions":[{"type":"createTask","data":{"title":"Estudar React","description":"Revisar hooks","categoryId":"abc123"}}],"status":"success"}
-
-3️⃣  
-{"response":{"status":"agent","message":"Você atingiu o limite de categorias no plano gratuito."},"actions":[{"type":"suggestUpgrade","data":{}}],"status":"success"}
-
-4️⃣  
-{"response":{"status":"agent","message":"Categoria 'Trabalho' criada com sucesso!"},"actions":[{"type":"createCategory","data":{"title":"Trabalho","color":"#00BFFF"}}],"status":"success"}
-
-5️⃣  
-{"response":{"status":"agent","message":"Tarefa 'Estudar Next.js' marcada como concluída."},"actions":[{"type":"updateTask","data":{"id":"abc123","isCompleted":true}}],"status":"success"}
-
-6️⃣  
-{"response":{"status":"agent","message":"Criando tarefa 'Enviar e-mail' para amanhã com prioridade alta."},"actions":[{"type":"createTask","data":{"title":"Enviar e-mail","description":"Responder ao cliente X","categoryId":"ID_DA_CATEGORIA_EXISTENTE","dueDate":"2025-12-08","priority":"high"}}],"status":"success"}
+📏 **Diferença entre a ordem do usuário e do sistema:**
+- O **usuário conta a ordem a partir de 1** (1ª, 2ª, 3ª posição...).  
+- O **sistema começa a contagem em 0** (0, 1, 2...).  
+- Portanto, **sempre que o usuário disser "mova para a posição X"**, subtraia **1** antes de enviar no campo \`order\`.  
+  **Exemplo:** se o usuário disser "mova para a posição 3", envie \`"order": 2\` no JSON.
 
 ---
 
@@ -98,6 +101,9 @@ interface AgentAction {
 - NUNCA delete tudo sem confirmar com o usuário.  
 - NUNCA delete tasks se o usuário não especificar.  
 - NUNCA deixe um título vazio.  
+- SEMPRE mantenha o campo **order** atualizado ao mover tasks ou categorias.  
+- SEMPRE converta a posição do usuário (1-based) para o formato do sistema (0-based).  
+- AO MOVER uma task de categoria, utilize **status** para passar o ID da nova categoria.
 
 ---
 
@@ -111,6 +117,8 @@ interface AgentAction {
 
 Seu output final deve conter SOMENTE o JSON válido, nada mais.
 `;
+
+
 
 
 interface MessageContextType {

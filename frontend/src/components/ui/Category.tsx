@@ -1,22 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { ITask } from "@/models/Task";
 import { ICategory } from "@/models/Category";
 import TaskDetailModal from "../modals/TaskDetailModal";
-import { AnimatePresence, motion, LayoutGroup } from "framer-motion";
 import { useMessages } from "@/app/context/MessageContext";
-import { format, isToday, isTomorrow, isPast, isValid } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import Button from "./ButtonGeneral";
 
 import {
-  Flag,
-  CalendarDays,
+  Droppable,
+  DraggableProvided,
+  DraggableStateSnapshot,
+} from "@hello-pangea/dnd";
+
+import {
   MoreHorizontal,
-  MoreVertical,
-  Check,
 } from "lucide-react";
+import Task from "./Task";
 
 interface CategoryProps {
   title: string;
@@ -25,15 +24,21 @@ interface CategoryProps {
   refreshData: () => void;
   categories: ICategory[];
   showSettings: () => void;
+  categoryId: string;
+  provided: DraggableProvided;
+  snapshot: DraggableStateSnapshot;
 }
 
 const Category = ({
   title,
   color,
-  data,
+  data: tasks,
   refreshData,
   categories,
+  categoryId,
   showSettings,
+  provided,
+  snapshot,
 }: CategoryProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ITask | null>(null);
@@ -103,26 +108,6 @@ const Category = ({
     }
   };
 
-  const formatDueDate = (dateString?: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-
-    if (!isValid(date)) return "";
-
-    const localDate = new Date(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate()
-  );
-
-    if (isToday(localDate)) return "Hoje";
-    if (isTomorrow(localDate)) return "Amanhã";
-    if (isPast(localDate) && !isToday(localDate))
-      return format(localDate, "dd MMM", { locale: ptBR });
-
-    return format(localDate, "dd MMM", { locale: ptBR });
-  };
-
   // 👉 Define cor de prioridade
   const getPriorityColorClass = (priority: ITask["priority"]) => {
     switch (priority) {
@@ -137,143 +122,93 @@ const Category = ({
     }
   };
 
+  const framerRef = useRef<HTMLDivElement>(null);
+
+  const setCombineRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      const innerRef = provided.innerRef;
+      const framer = framerRef;
+      if (innerRef) {
+        if (typeof innerRef === "function") {
+          innerRef(node);
+        } else if ("current" in innerRef) {
+        // eslint-disable-next-line react-hooks/immutability
+        (innerRef as React.RefObject<HTMLDivElement | null>).current = node;
+      }
+      }
+
+      if (framer && "current" in framer) {
+      framer.current = node;
+    }
+  },
+    [provided.innerRef]
+  );
+
   return (
     <>
-      <motion.div
-        className="flex flex-col gap-4 p-5 bg-primary-foreground/8 rounded-2xl max-w-95 min-w-75 flex-1"
-        layout
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -20, scale: 0.95 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-      >
-        <header className="flex justify-between items-center" style={{ color }}>
-          <div className="flex items-center gap-3">
-            <div
-              className="w-3 aspect-square rounded-full"
-              style={{ background: color }}
-            ></div>
-            <h3 className="font-semibold">{title}</h3>
-          </div>
-          <div className="info flex items-center gap-2 aspect-square">
-            <button
-              className="w-7 aspect-square bg-primary-foreground/8 flex justify-center items-center rounded-lg cursor-pointer"
-              onClick={showSettings}
-            >
-              <MoreHorizontal size="1.25rem" className=" rounded-sm" />
-            </button>
-            <span className="text-sm font-medium">{data.length}</span>
-          </div>
-        </header>
+      <div ref={setCombineRef} {...provided.draggableProps}>
+        <div
+          className={`flex flex-col gap-4 p-5 bg-primary-foreground/8 rounded-2xl max-w-95 min-w-75 flex-1 ${
+            snapshot.isDragging ? "shadow-lg ring-2 ring-blue-500" : "" // Feedback visual ao arrastar a coluna
+          }`}
+        >
+          <header
+            className="flex justify-between items-center"
+            style={{ color }}
+            {...provided.dragHandleProps}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-3 aspect-square rounded-full"
+                style={{ background: color }}
+              ></div>
+              <h3 className="font-semibold">{title}</h3>
+            </div>
+            <div className="info flex items-center gap-2 aspect-square">
+              <button
+                className="w-7 aspect-square bg-primary-foreground/8 flex justify-center items-center rounded-lg cursor-pointer"
+                onClick={showSettings}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal size="1.25rem" className=" rounded-sm" />
+              </button>
+              <span className="text-sm font-medium">{tasks.length}</span>
+            </div>
+          </header>
 
-        <LayoutGroup>
-          <div className="flex flex-col gap-2">
-            <AnimatePresence mode="popLayout">
-              {data.map((task) => (
-                <motion.div
-                  key={String(task._id)}
-                  layout
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  // onClick={() => handleTaskClick(task)}
-                  role="button"
-                  title="Ver detalhes da tarefa"
-                  className={`flex flex-col gap-2 p-3  rounded-xl cursor-pointer  transition ${
-                    task.isCompleted
-                      ? "bg-success hover:bg-success/80"
-                      : "bg-primary-foreground hover:bg-primary-foreground/80"
+            <Droppable droppableId={categoryId} type="task">
+              {(providedInnerDroppable, snapshotInnerDroppable) => (
+                <div
+                  className={`flex flex-col gap-2 p-1 ${
+                    tasks.length === 0
+                      ? "min-h-[100px] border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center text-muted-foreground"
+                      : ""
+                  } ${
+                    snapshotInnerDroppable.isDraggingOver ? "bg-primary-foreground/10" : ""
                   }`}
+                  ref={providedInnerDroppable.innerRef}
+                  {...providedInnerDroppable.droppableProps}
                 >
-                  <header className="flex items-center gap-2 justify-between">
-                    <div
-                      className="w-2 aspect-square rounded-full"
-                      style={{ background: color }}
-                    ></div>
-                    <div className="actions flex items-center gap-1">
-                      <button
-                        className={`w-6 aspect-square rounded-full flex justify-center items-center cursor-pointer ${
-                          task.isCompleted
-                            ? "bg-primary-foreground text-success"
-                            : "bg-success"
-                        }`}
-                        onClick={() => {
-                          handleUpdateTaskStatus(
-                            task._id as string,
-                            !task.isCompleted
-                          );
-                        }}
-                      >
-                        <Check size="1rem" />
-                      </button>
-                      <button
-                        className={`w-7 aspect-square flex justify-center items-center rounded-lg cursor-pointer ${
-                          task.isCompleted
-                            ? "bg-primary-foreground/8"
-                            : "bg-background/5"
-                        }`}
-                        onClick={() => handleTaskClick(task)}
-                      >
-                        <MoreVertical
-                          size="1.25rem"
-                          className={` rounded-sm ${
-                            task.isCompleted
-                              ? "text-primary-foreground"
-                              : "text-muted-foreground"
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </header>
-                  <div className="content flex flex-col gap-1">
-                    <p className="font-semibold text-background">
-                      {task.title}
-                    </p>
-
-                    <p
-                      className={`text-sm ${
-                        task.isCompleted
-                          ? "line-through"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {task.description}
-                    </p>
-                  </div>
-
-                  <footer
-                    className={`flex items-center justify-between text-xs ${
-                      task.isCompleted
-                        ? "line-through"
-                        : "text-muted-foreground"
-                    } mt-2`}
-                  >
-                    {task.dueDate && (
-                      <span className="flex items-center gap-1">
-                        <CalendarDays size={14} />
-                        {formatDueDate(String(task.dueDate))}
-                      </span>
-                    )}
-                    <span
-                      className={`flex items-center gap-1 ${getPriorityColorClass(
-                        task.priority
-                      )}`}
-                    >
-                      <Flag size={14} />
-                      {task.priority === "low"
-                        ? "Baixa"
-                        : task.priority === "medium"
-                        ? "Média"
-                        : "Alta"}
-                    </span>
-                  </footer>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </LayoutGroup>
-      </motion.div>
+                  {/* <AnimatePresence mode="popLayout"> */}
+                  {tasks.map((task, index) => (
+                    <Task
+                      key={String(task._id)}
+                      task={task}
+                      index={index}
+                      color={color}
+                      handleUpdateTaskStatus={handleUpdateTaskStatus}
+                      handleTaskClick={handleTaskClick}
+                      getPriorityColorClass={getPriorityColorClass}
+                    />
+                  ))}
+                  {/* </AnimatePresence> */}
+                  {providedInnerDroppable.placeholder}
+                </div>
+              )}
+            </Droppable>
+        </div>
+      </div>
 
       <TaskDetailModal
         isOpen={isModalOpen}

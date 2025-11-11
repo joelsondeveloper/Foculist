@@ -18,6 +18,19 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Focuslist - Organize suas Tarefas",
   description: "Organizador de Tarefas e Produtividade",
+  manifest: "/manifest.json",
+  themeColor: "#1A1A2E",
+  appleWebApp: {
+    capable: true,
+    title: "Focuslist",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    apple: "/icons/icon-72x72.png",
+  },
 };
 
 export default async function RootLayout({

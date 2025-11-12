@@ -7,7 +7,7 @@ import { MessageProvider } from "./context/MessageContext";
 import Chatbot from "@/components/layouts/Chatbot";
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 
 // Carregando a fonte Inter
 const inter = Inter({

@@ -11,6 +11,9 @@ export const customStyles = {
     borderRadius: "1rem",
     padding: "2rem",
     color: "#fff",
+    maxHeight: "90vh",
+    maxWidth: "100vw",
+    overflow: "auto",
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.75)",

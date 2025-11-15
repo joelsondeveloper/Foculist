@@ -10,6 +10,7 @@ export interface ITask extends Document {
     isCompleted: boolean
     order: number
     isPriorityManual: boolean
+    userMovedManually: boolean
   }
 
   export interface ITaskClient {
@@ -23,6 +24,7 @@ export interface ITask extends Document {
   isCompleted: boolean;
   order: number;
   isPriorityManual: boolean
+  userMovedManually: boolean
 }
 
 const TaskSchema = new Schema<ITask>({
@@ -61,6 +63,11 @@ const TaskSchema = new Schema<ITask>({
       required: true
     },
     isPriorityManual: {
+      type: Boolean,
+      default: false,
+      required: true
+    },
+    userMovedManually: {
       type: Boolean,
       default: false,
       required: true

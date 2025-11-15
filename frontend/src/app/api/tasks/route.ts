@@ -3,6 +3,7 @@ import dbConnect from "@/lib/dbConnect";
 import Task from "@/models/Task";
 import { authOptions } from "@/lib/authOptions";
 import { getServerSession } from "next-auth/next";
+import mongoose from "mongoose";
 
 export async function GET() {
 
@@ -37,11 +38,11 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const {title, description, status, dueDate, priority, isCompleted} = body;
+        const {title, description, status, dueDate, priority, isCompleted, userMovedManually} = body;
 
         console.log(body);
 
-        if (!title || !description || !status) {
+        if (!title || !status) {
             return NextResponse.json({sucess: false, message: "Título, descrição e status (ID da categoria) sao obrigatorios"}, {status: 400});
         }
 
@@ -50,14 +51,15 @@ export async function POST(request: Request) {
 
         const task = await Task.create({
             title,
-            description,
+            description: description || "sem descrição",
             status,
             dueDate: dueDate || null,
             priority: (priority === 'low' || priority === 'medium' || priority === 'high') ? priority : null,
             isPriorityManual: (priority === 'low' || priority === 'medium' || priority === 'high'),
             isCompleted: isCompleted ?? false,
             userId: session.user.id,
-            order: newOrder
+            order: newOrder,
+            userMovedManually: userMovedManually ?? false
         });
         return NextResponse.json({sucess: true, data: task}, {status: 201});
     } catch (error) {
@@ -76,15 +78,39 @@ export async function PUT(request: NextRequest) {
     await dbConnect();
 
     try {
-        const {id, title, description, status, dueDate, priority, isCompleted, order, isPriorityManual} = await request.json();
+        const body = await request.json();
+        const {id, title, description, status, dueDate, priority, isCompleted, order, userMovedManually} = body;
         if (!id) {
             return NextResponse.json({sucess: false, message: "ID e obrigatorio"}, {status: 400});
+        }
+
+        const existingTask = await Task.findById(id);
+        if (!existingTask || String(existingTask.userId) !== String(session.user.id)) {
+            return NextResponse.json({sucess: false, message: "Tarefa nao encontrada ou nao pertence ao usuario"}, {status: 404});
         }
 
          const updates: any = {};
         if (title !== undefined) updates.title = title;
         if (description !== undefined) updates.description = description;
-        if (status !== undefined) updates.status = status;
+        if (status !== undefined) {
+            updates.status = status;
+            if (existingTask.userMovedManually === true && userMovedManually === false && existingTask.status !== status) {
+                return NextResponse.json({
+                    sucess: false,
+                    message: "Não é possível mover esta tarefa automaticamente. Ela foi posicionada manualmente e a automação está desabilitada."
+                }, { status: 403 });
+            }
+
+            if (userMovedManually !== undefined) {
+                updates.userMovedManually = userMovedManually;
+            } else {
+                updates.userMovedManually = true;
+            }
+        } else {
+            if (userMovedManually !== undefined) {
+                updates.userMovedManually = userMovedManually;
+            }
+        }
         if (dueDate !== undefined) updates.dueDate = dueDate;
         if (priority !== undefined) {
             if (priority === 'low' || priority === 'medium' || priority === 'high') {

@@ -1,4 +1,7 @@
 import mongoose, { Schema } from "mongoose";
+import Category from "./Category";
+import Task from "./Task";
+import Account from "./Account";
 
 export interface IUser extends mongoose.Document {
     name: string;
@@ -51,6 +54,24 @@ const UserSchema = new Schema<IUser>({
     subscriptionEndDate: {
       type: Date,
       default: null
+    }
+  });
+
+  UserSchema.pre<IUser>('deleteOne', { document: true, query: false }, async function(next) {
+    const user = this as IUser;
+    console.log(`🟡 Executando middleware pre-deleteOne para User ${user._id}`);
+
+    try {
+      
+      await Category.deleteMany({ userId: user._id });
+      await Task.deleteMany({ userId: user._id });
+      await Account.deleteMany({ userId: user._id });
+
+      next();
+
+    } catch (error) {
+      console.error(`🔴 Erro ao executar middleware pre-deleteOne para User ${user._id}: ${error}`);
+      next(new Error(`Erro ao executar middleware pre-deleteOne para User ${user._id}: ${error}`));
     }
   });
   

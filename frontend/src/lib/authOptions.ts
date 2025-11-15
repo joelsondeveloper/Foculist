@@ -8,6 +8,7 @@ import User from "@/models/User";
 import bcrypt from "bcryptjs";
 import Category from "@/models/Category";
 import mongoose from "mongoose";
+import { getDefaultCategories } from "./getDefaultCategories";
 
 export const authOptions: AuthOptions = {
   adapter: MongoDBAdapter(clientPromise),
@@ -140,14 +141,7 @@ export const authOptions: AuthOptions = {
           });
         }
 
-        // Cria categorias padrão
-        const defaultCategories = [
-          { title: "Atrasado", color: "#EF4444", userId: newUser._id },
-          { title: "Hoje", color: "#3B82F6", userId: newUser._id },
-          { title: "Em andamento", color: "#F97316", userId: newUser._id },
-          { title: "Concluído", color: "#22C55E", userId: newUser._id },
-        ];
-        await Category.insertMany(defaultCategories);
+        await Category.insertMany(getDefaultCategories(newUser._id));
       }
 
       return true;

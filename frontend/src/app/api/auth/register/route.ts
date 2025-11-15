@@ -5,7 +5,8 @@ import bcrypt from "bcryptjs";
 import sgMail from "@sendgrid/mail";
 import crypto from "crypto";
 import VerificationToken from "@/models/VerificationToken";
-import Category from "@/models/Category";
+import Category, { CategoryCreateDTO, ICategory, ICategoryClient } from "@/models/Category";
+import { getDefaultCategories } from "@/lib/getDefaultCategories";
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY as string);
 
@@ -34,15 +35,8 @@ export async function POST(request: Request) {
 
     const user = await User.create({ name, email, password: hashedPassword });
 
-    const defaultCategories = [
-      { title: "Atrasado", color: "#EF4444", userId: user._id },
-      { title: "Hoje", color: "#3B82F6", userId: user._id },
-      { title: "Em andamento", color: "#F97316", userId: user._id },
-      { title: "Concluído", color: "#22C55E", userId: user._id },
-    ];
-
     console.log("🟡 Criando categorias padrão para:", user._id);
-    await Category.insertMany(defaultCategories);
+    await Category.insertMany(getDefaultCategories(String(user._id)));
     console.log("🟢 Categorias criadas!");
 
     const verificationToken = crypto.randomBytes(32).toString("hex");

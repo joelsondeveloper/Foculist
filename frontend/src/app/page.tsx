@@ -9,6 +9,7 @@ import { ITaskClient } from "@/models/Task";
 import { ICategoryClient } from "@/models/Category";
 import { useMessages } from "./context/MessageContext";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
+import { evaluateRule } from "@/lib/ruleEvaluator";
 
 export default function Home() {
   const { data: session, status: sessionStatus } = useSession();
@@ -78,6 +79,7 @@ export default function Home() {
               color: cat.color,
               order: cat.order,
               userId: String(cat.userId),
+              automationRule: cat.automationRule || null,
             }))
             .sort((a: ICategoryClient, b: ICategoryClient) => a.order - b.order)
         );
@@ -95,6 +97,79 @@ export default function Home() {
     }
   }, [sessionStatus, addMessage]);
 
+  const applyAutomations = useCallback(async () => {
+    if (
+      !session ||
+      !categories ||
+      !tasks ||
+      categories.length === 0 ||
+      tasks.length === 0
+    )
+      return;
+
+    const tasksToUpdate: ITaskClient[] = [];
+    const updatePromises: Promise<Response>[] = [];
+
+    for (const task of tasks) {
+      if (task.userMovedManually) {
+        console.log(
+          `🟡 Automação ignorada para tarefa "${task.title}" (ID: ${task._id}) - userMovedManually é TRUE.`
+        );
+        continue;
+      }
+
+      let newCategoryId: string | null = null;
+      let targetCategory: ICategoryClient | null = null;
+
+      const sortedCategories = categories.sort((a, b) => a.order - b.order);
+
+      for (const category of sortedCategories) {
+        if (category.automationRule && category._id !== task.status) {
+          const isMatch = evaluateRule(task, category.automationRule);
+          if (isMatch) {
+            newCategoryId = category._id;
+            targetCategory = category;
+            break;
+          }
+        }
+      }
+
+      if (newCategoryId && newCategoryId !== String(task.status)) {
+        console.log(
+          `🟡 Automação: Movendo tarefa "${task.title}" para categoria "${targetCategory?.title}"`
+        );
+        tasksToUpdate.push({
+          ...task,
+          status: newCategoryId,
+          userMovedManually: false,
+        });
+        updatePromises.push(
+          fetch(`/api/tasks`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: String(task._id),
+              status: newCategoryId,
+              userMovedManually: false,
+            }),
+          })
+        );
+      }
+    }
+    if (updatePromises.length > 0) {
+      try {
+        await Promise.all(updatePromises);
+        addMessage("Tarefas atualizadas com sucesso!", "success");
+        fetchData();
+      } catch (error) {
+        console.error("Erro ao atualizar tarefas:", error);
+        addMessage("Erro ao atualizar tarefas.", "error");
+      }
+    }
+  }, [addMessage, categories, fetchData, session, tasks]);
+
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
       router.push("/login");
@@ -108,6 +183,7 @@ export default function Home() {
   useEffect(() => {
     if (sessionStatus === "authenticated" && !loading) {
       setDynamicContextData(categories, tasks, fetchData);
+      applyAutomations();
     }
   }, [
     tasks,
@@ -116,6 +192,7 @@ export default function Home() {
     sessionStatus,
     loading,
     fetchData,
+    applyAutomations,
   ]);
 
   const handleTaskCreated = () => {

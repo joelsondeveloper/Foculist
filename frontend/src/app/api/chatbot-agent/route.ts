@@ -66,11 +66,19 @@ export async function POST(request: NextRequest) {
     fullPrompt += `\n- Nome: ${context.userName}`;
     fullPrompt += `\n- Email: ${context.userEmail}`;
     fullPrompt += `\n- Data de hoje: ${new Date().toISOString().split("T")[0]}`;
-    fullPrompt += `\n- Categorias (${
-      context.categories.length
-    } total, limite free: ${MAX_FREE_CATEGORIES}): ${context.categories
-      .map((c) => `${c.title} (ID: ${c._id})`)
-      .join(", ")}`;
+
+    fullPrompt += `\n- Categorias (${context.categories.length} total, limite free: ${MAX_FREE_CATEGORIES}):`;
+    if (context.categories.length > 0) {
+      context.categories.forEach((category) => {
+        const automationRuleText = category.automationRule
+          ? ` (Regra: ${JSON.stringify(category.automationRule)})`
+          : "";
+        fullPrompt += `\n  - [ID: ${category._id}, Título: "${category.title}", Cor: ${category.color}, Ordem: ${category.order}${automationRuleText}]`;
+      });
+    } else {
+      fullPrompt += ` Nenhuma categoria cadastrada.`;
+    }
+
     fullPrompt += `\n- Tarefas (${context.tasks.length} total):`;
     if (context.tasks.length > 0) {
       context.tasks.forEach((task) => {
@@ -78,12 +86,31 @@ export async function POST(request: NextRequest) {
           ? new Date(task.dueDate).toISOString().split("T")[0]
           : "N/A";
         const isCompleted = task.isCompleted ? "Concluída" : "Pendente";
-        fullPrompt += `\n  - [ID: ${task._id}, Título: "${task.title}", Descrição: "${task.description}", Categoria_ID: "${task.status}", Vencimento: ${dueDate}, Prioridade: "${task.priority}", Status: "${isCompleted}"],
-        Ordenação: ${task.order}`;
+        const isPriorityManual = task.isPriorityManual
+          ? "Manual"
+          : "Automática";
+        const userMovedManually = task.userMovedManually ? "Sim" : "Não";
+
+        fullPrompt += `\n  - [ID: ${task._id}, Título: "${
+          task.title
+        }", Descrição: "${task.description}", Categoria_ID: "${
+          task.status
+        }", Vencimento: ${dueDate}, Prioridade: "${
+          task.priority || "N/A"
+        }" (Origem: ${isPriorityManual}), Status: "${isCompleted}", Ordem: ${
+          task.order
+        }, Movida_Manualmente: ${userMovedManually}]`;
       });
     } else {
       fullPrompt += ` Nenhuma tarefa cadastrada.`;
     }
+
+    fullPrompt += `\n\nHistórico de Conversa (últimas ${chatHistory.length} mensagens):`;
+    chatHistory.forEach((msg) => {
+      fullPrompt += `\n${msg.type === "user" ? "Usuário" : "Agente"}: ${
+        msg.text
+      }`;
+    });
 
     fullPrompt += `\n\nHistórico de Conversa (últimas ${chatHistory.length} mensagens):`;
     chatHistory.forEach((msg) => {

@@ -47,99 +47,106 @@ interface AgentResponse {
 
 interface AgentAction {
   type: "createTask" | "createCategory" | "deleteTask" | "deleteCategory" |
-        "updateTask" | "updateCategory" | "suggestUpgrade" | "info";
+        "updateTask" | "updateCategory" | "suggestUpgrade" | "info" | "moveTask";
   data?: any;
   tempId?: string;
 }
 
 ---
 
+🧠 **NOVO: Regras de Automação (AutomationRule)**
+
+interface AutomationRule {
+  rules: Array<{
+    field: "title" | "description" | "dueDate" | "priority" | "isCompleted" | "status";
+    operator: "equals" | "notEquals" | "contains" | "notContains" |
+              "lessThan" | "greaterThan" | "between" | "isTrue" | "isFalse" |
+              "isPast" | "isFuture" | "isToday" | "isTomorrow" |
+              "isNull" | "isNotNull";
+    value?: any;
+    value2?: any;
+  }>;
+  logicalOperator: "AND" | "OR";
+}
+
+📌 **Categorias Automatizadas:**
+- Uma categoria pode ter **automationRule**.
+- Se uma task atender a automationRule:
+  ➝ Ela deve ser movida automaticamente para aquela categoria.  
+- EXCEÇÃO: se a task tiver **userMovedManually: true**, automações NÃO podem movê-la.
+- Se o usuário pedir “deixar automático”, enviar **userMovedManually: false**.
+
+📌 **Quando sugerir categorias automáticas:**
+Se o usuário falar algo como:
+- “Quero uma coluna de atrasadas”
+- “Cria uma coluna para tarefas de alta prioridade”
+- “Quero separar as concluídas automaticamente”
+Você deve sugerir/criar categorias com automationRule.
+
+---
+
 🎯 **Formato ‘data’ esperado em cada ação:**
 
-- **createTask** → { "title": "...", "description": "...", "categoryId": "...", "order"?: number, "dueDate"?: "YYYY-MM-DD", "priority"?: "low" | "medium" | "high" }  
-  **Observação:** se a prioridade for automática (nenhuma definida pelo usuário), **não envie o campo \`priority\`**.  
-  **Exemplo (manual):** {"title":"Lavar louça","description":"Lavar todos os pratos sujos na pia","categoryId":"690cb1633bcb282bdfff19bc","order":1,"dueDate":"2025-12-25","priority":"high"}  
-  **Exemplo (automática):** {"title":"Estudar React","description":"Focar em hooks","categoryId":"690cb1633bcb282bdfff19bc","dueDate":"2025-12-25"}
+- **createTask** → { "title": "...", "description": "...", "categoryId": "...", "order"?: number, "dueDate"?: "YYYY-MM-DD", "priority"?: "low" | "medium" | "high", "userMovedManually"?: boolean }
 
-- **updateTask** → { "id": "...", "title"?: "...", "description"?: "...", "status"?: "id_da_nova_categoria", "isCompleted"?: boolean, "dueDate"?: "YYYY-MM-DD" | null, "priority"?: "low" | "medium" | "high", "order"?: number }  
-  **Exemplo (definir prioridade manual):** {"id":"690cb1633bcb282bdfff19bd","priority":"high"}  
-  **Exemplo (voltar para prioridade automática):** {"id":"690cb1633bcb282bdfff19bd"}
+- **updateTask** → { "id": "...", "title"?: "...", "description"?: "...", "status"?: "id_da_nova_categoria", "isCompleted"?: boolean, "dueDate"?: "YYYY-MM-DD" | null, "priority"?: "low" | "medium" | "high", "order"?: number, "userMovedManually"?: boolean | null }
 
-- **createCategory** → { "title": "...", "color": "#HEX", "order"?: number }  
-  **Exemplo:** {"title":"Trabalho","color":"#00BFFF","order":0}
+- **createCategory** → { "title": "...", "color": "#HEX", "order"?: number, "automationRule"?: AutomationRule }
 
-- **updateCategory** → { "id": "...", "title"?: "...", "color"?: "#HEX", "order"?: number }  
-  **Exemplo:** {"id":"categ123","title":"Pessoal","order":3}
+- **updateCategory** → { "id": "...", "title"?: "...", "color"?: "#HEX", "order"?: number, "automationRule"?: AutomationRule | null }
 
-- **deleteTask** → { "id": "..." }  
-- **deleteCategory** → { "id": "..." }  
-- **suggestUpgrade** → {}  
-- **info** → { "message": "..." }
+- Outros:
+  - **moveTask** → igual ao updateTask, mas sem prioridade
+  - **deleteTask** → { "id": "..." }
+  - **deleteCategory** → { "id": "..." }
+  - **suggestUpgrade** → {}
+  - **info** → { "message": "..." }
 
 ---
 
-🧱 **Mecânica de movimentação (drag & drop e ordenação):**
-- Tanto **tasks** quanto **categories** possuem um campo numérico chamado **order**, que define sua posição.  
-- Quando o usuário move uma task ou categoria, atualize o campo **order** conforme a nova posição.  
-- A movimentação deve ser feita utilizando a ação **updateTask** ou **updateCategory**, passando o **id** e o **novo valor de order**.  
-  **Exemplo:**  
-  {"response":{"status":"agent","message":"Tarefa movida com sucesso!"},"actions":[{"type":"updateTask","data":{"id":"task123","order":2}}],"status":"success"}  
-  {"response":{"status":"agent","message":"Categoria reordenada."},"actions":[{"type":"updateCategory","data":{"id":"cat456","order":1}}],"status":"success"}
+🧱 **Drag & Drop (order):**
+- O Agent só deve enviar o novo **order** do item que foi movido em tasks ou categorias.
+- O backend é responsável por recalcular a ordem dos outros itens automaticamente.
+- Se mover para outra categoria → enviar também o novo "status" (id da categoria).
 
-📦 **Movimentação entre categorias:**
-- Se uma task for movida para **outra categoria**, use o campo **status** para indicar o **id da categoria de destino**, junto com o novo **order**.  
-  **Exemplo:**  
-  {"response":{"status":"agent","message":"Tarefa movida para outra categoria."},"actions":[{"type":"updateTask","data":{"id":"task999","status":"id_categoria_nova","order":0}}],"status":"success"}
-
-📏 **Diferença entre a ordem do usuário e do sistema:**
-- O **usuário conta a ordem a partir de 1** (1ª, 2ª, 3ª posição...).  
-- O **sistema começa a contagem em 0** (0, 1, 2...).  
-- Portanto, **sempre que o usuário disser "mova para a posição X"**, subtraia **1** antes de enviar no campo \`order\`.  
-  **Exemplo:** se o usuário disser "mova para a posição 3", envie \`"order": 2\` no JSON.
 
 ---
 
-🔥 **Lógica de Prioridade (com isPriorityManual):**
-
-- Toda tarefa tem dois campos relacionados à prioridade:
-  - \`priority\`: "low" | "medium" | "high"  
-  - \`isPriorityManual\`: boolean
-
-📖 **Regras:**
-1. Por padrão, uma nova tarefa começa com **prioridade automática** → o agente **não envia o campo \`priority\`**.
-2. O frontend calcula a prioridade automática com base em **dueDate**:
-   - Hoje / Atrasada / Amanhã → "high"
-   - Entre 3 e 7 dias → "medium"
-   - Mais de 7 dias ou sem data → "low"
-3. Se o usuário disser algo como “deixa essa tarefa com prioridade alta”, o agente deve enviar **priority** com o valor pedido (ex: "high").  
-   Isso faz com que o backend defina **isPriorityManual: true**.
-4. Se o usuário disser algo como “volta pra prioridade automática” ou “remove prioridade manual”, o agente deve **simplesmente omitir o campo \`priority\`**, o que faz com que o backend defina **isPriorityManual: false** e recalcule a prioridade automática.
-5. O agente **nunca envia isPriorityManual diretamente**, esse valor é gerenciado pelo backend.
-6. Sempre que falar de prioridade, mostre a prioridade **efetiva** (manual se houver, senão a automática).
+🔥 **Prioridade (manual x automática):**
+1. Se o usuário não pedir prioridade → NÃO envie \`priority\`.
+2. Se o usuário pedir prioridade → envie o valor pedido.
+3. Se pedir prioridade automática → OMITA \`priority\`.
+4. Não envie isPriorityManual — isso é controlado pelo backend.
 
 ---
 
-⚠️ **Regras de consistência:**
-- NUNCA crie tasks sem categoria.  
-- NUNCA delete tudo sem confirmar com o usuário.  
-- NUNCA delete tasks se o usuário não especificar.  
-- NUNCA deixe um título vazio.  
-- SEMPRE mantenha o campo **order** atualizado ao mover tasks ou categorias.  
-- SEMPRE converta a posição do usuário (1-based) para o formato do sistema (0-based).  
-- AO MOVER uma task de categoria, utilize **status** para passar o ID da nova categoria.
+🔒 **Regra sobre userMovedManually:**
+- **true** = usuário moveu manualmente → automações são bloqueadas.
+- **false** = automações podem agir.
+- Mover manualmente uma task → sempre enviar { userMovedManually: true }.
+
+---
+
+⚠️ **Regras de segurança:**
+- Nunca crie tasks sem categoryId.
+- Nunca delete tudo sem confirmação.
+- Nunca deixe um título vazio.
+- Sempre respeite order, prioridade e automações.
 
 ---
 
 🚨 **IMPORTANTE:**
-- NÃO explique sua resposta.  
-- NÃO coloque texto fora do JSON.  
-- NÃO use markdown (\`\`\`json).  
-- NÃO adicione quebras de linha fora das chaves.  
-- Se não puder responder, devolva:  
+- NÃO explique a resposta.
+- NÃO coloque texto fora do JSON.
+- NÃO use markdown.
+- NÃO use comentários.
+- Se não entender, devolva:
 {"response":{"status":"error","message":"Não consegui entender o pedido."},"status":"error"}
 
-Seu output final deve conter SOMENTE o JSON válido, nada mais.
+Seu output final deve conter SOMENTE o JSON válido.
 `;
+
+
 
 
 
@@ -230,7 +237,7 @@ export function MessageProvider({ children, session }: MessageProviderProps) {
             apiEndpoint = "/api/tasks";
             method = "POST";
 
-            let categoryIdToUse = action.data?.categoryId;
+            const categoryIdToUse = action.data?.categoryId;
             if (categoryIdToUse && tempIdMap.has(categoryIdToUse)) {
               const realCategoryId = tempIdMap.get(categoryIdToUse);
               if (!realCategoryId) {

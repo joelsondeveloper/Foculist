@@ -171,3 +171,7 @@ select option {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #5a3a9a; /* Cor da barra de rolagem ao passar o mouse */
 }
+
+.ReactModal__Content::-webkit-scrollbar {
+  display: none;
+}

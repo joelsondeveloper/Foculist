@@ -7,6 +7,7 @@ import CategoryFormModal from "../modals/CategoryFormModal";
 import ButtonGeneral from "../ui/ButtonGeneral";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { useMessages } from "@/app/context/MessageContext";
+import { AutomationRule } from "@/app/interfaces/automation";
 
 interface TaskCategories {
   tasks: { [key: string]: ITaskClient[] };
@@ -40,15 +41,16 @@ const TaskCategories = ({ tasks, categories, refreshData }: TaskCategories) => {
     title: string;
     color: string;
     id?: string;
+    automationRule?: AutomationRule | null;
   }) => {
     setSaving(true);
-    const { id, title, color } = data;
+    const { id, title, color, automationRule } = data;
 
-    console.log("🟡 Salvando categoria:", { id, title, color });
+    console.log("🟡 Salvando categoria:", { id, title, color, automationRule });
 
     const method = id && id.trim() !== "" ? "PUT" : "POST";
 
-    const body = JSON.stringify({ id, title, color });
+    const body = JSON.stringify({ id, title, color, automationRule });
     try {
       const res = await fetch("/api/categories", {
         method,
@@ -87,6 +89,7 @@ const TaskCategories = ({ tasks, categories, refreshData }: TaskCategories) => {
     handleCloseSettings();
     setCategoryToEdit(category);
     setFormModalIsOpen(true);
+
   };
 
   const handleDeleteCategory = async (id: string) => {
@@ -184,6 +187,7 @@ const TaskCategories = ({ tasks, categories, refreshData }: TaskCategories) => {
         categoryToEdit={categoryToEdit}
         onSave={handleSaveCategory}
         loading={saving}
+        categories={categories}
       />
     </>
   );

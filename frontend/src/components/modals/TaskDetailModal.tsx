@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Modal from "react-modal";
-import { ICategory, ICategoryClient } from "@/models/Category";
-import { ITask, ITaskClient } from "@/models/Task";
+import { ICategoryClient } from "@/models/Category";
+import { ITaskClient } from "@/models/Task";
 import { customStyles } from "@/app/utils/customStylesModal";
 import { useMessages } from "@/app/context/MessageContext";
 import { calculatePriority } from "@/lib/taskPriorityUtils";
@@ -34,6 +34,7 @@ const TaskDetailModal = ({
   const [description, setDescription] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high" | null>(null);
+  const [userMovedManually, setUserMovedManually] = useState(false);
   const [dueDate, setDueDate] = useState<string>("");
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,34 +47,31 @@ const TaskDetailModal = ({
       setDescription(task.description || "");
       setSelectedCategory(task.status);
       setPriority(task.priority || null);
-      setDueDate(
-        task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : ""
-      );
+      setUserMovedManually(task.userMovedManually || false);
+      setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "");
       setIsCompleted(task.isCompleted || false);
       setIsEditing(false);
     }
   }, [task, isOpen]);
 
-  if (!task) {
-    return null;
-  }
+  if (!task) return null;
 
-  const calculatedPriority = calculatePriority(dueDate ? new Date(dueDate) : null, isCompleted);
-  const displayPriority = task.isPriorityManual ? (priority || "medium") : calculatedPriority;
+  const calculatedPriority = calculatePriority(
+    dueDate ? new Date(dueDate) : null,
+    isCompleted
+  );
+  const displayPriority = task.isPriorityManual ? priority || "medium" : calculatedPriority;
 
-  const handleEditClick = () => {
-    setIsEditing(true);
-  };
-
+  const handleEditClick = () => setIsEditing(true);
   const handleCancelEdit = () => {
+    if (!task) return;
     setIsEditing(false);
     setTitle(task.title);
     setDescription(task.description || "");
     setSelectedCategory(task.status);
     setPriority(task.priority || "medium");
-    setDueDate(
-      task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : ""
-    );
+    setUserMovedManually(task.userMovedManually || false);
+    setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "");
     setIsCompleted(task.isCompleted || false);
   };
 
@@ -84,8 +82,8 @@ const TaskDetailModal = ({
       addMessage("Tarefa deletada com sucesso!", "success");
       onRequestClose();
     } catch (error) {
-      console.error("Erro ao deletar tarefa no modal:", error);
-      addMessage("Ocorreu um erro ao deletar a tarefa.", "error");
+      console.error("Erro ao deletar tarefa:", error);
+      addMessage("Erro ao deletar tarefa.", "error");
     } finally {
       setLoading(false);
     }
@@ -107,11 +105,12 @@ const TaskDetailModal = ({
         priority: priority || undefined,
         dueDate: dueDate ? new Date(dueDate) : undefined,
         isCompleted,
+        userMovedManually,
       });
       addMessage("Tarefa alterada com sucesso!", "success");
     } catch (error) {
-      console.error("Erro ao salvar tarefa no modal:", error);
-      addMessage("Ocorreu um erro ao salvar a tarefa.", "error");
+      console.error("Erro ao salvar tarefa:", error);
+      addMessage("Erro ao salvar tarefa.", "error");
     } finally {
       setLoading(false);
     }
@@ -121,132 +120,140 @@ const TaskDetailModal = ({
     <Modal isOpen={isOpen} onRequestClose={onRequestClose} style={customStyles}>
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-6 min-w-[400px] max-w-lg"
+        className="
+          flex flex-col gap-6 w-full max-w-lg 
+          sm:min-w-[380px] p-4 sm:p-6 rounded-2xl
+          text-white
+        "
       >
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-xl sm:text-2xl font-bold">
             {isEditing ? "Editar Tarefa" : "Detalhes da Tarefa"}
           </h2>
-          {/* Mostra o botão de fechar */}
-          <button type="button" onClick={onRequestClose} className="text-2xl">
+          <button
+            type="button"
+            onClick={onRequestClose}
+            className="text-2xl hover:text-red-400 transition-colors"
+          >
             &times;
           </button>
         </div>
 
-        {/* CAMPOS DO FORMULÁRIO */}
-        <div>
-          <label htmlFor="taskTitle" className="block text-sm font-medium mb-1">
-            Título
-          </label>
-          <input
-            id="taskTitle"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            // O campo fica desabilitado se NÃO estiver no modo de edição
-            disabled={!isEditing}
-            className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70"
-            required
-          />
+        {/* CAMPOS */}
+        <div className="flex flex-col gap-4">
+          <div>
+            <label htmlFor="taskTitle" className="block text-sm mb-1">Título</label>
+            <input
+              id="taskTitle"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={!isEditing}
+              className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70 text-sm sm:text-base"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="taskDescription" className="block text-sm mb-1">Descrição</label>
+            <textarea
+              id="taskDescription"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={!isEditing}
+              rows={4}
+              className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70 text-sm sm:text-base"
+            />
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="taskCategory" className="block text-sm mb-1">Categoria</label>
+              <select
+                id="taskCategory"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                disabled={!isEditing}
+                className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70"
+              >
+                {categories.map((cat) => (
+                  <option key={String(cat._id)} value={String(cat._id)}>
+                    {cat.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="taskPriority" className="block text-sm mb-1">
+                Prioridade ({task.isPriorityManual ? "Manual" : "Automática"})
+              </label>
+              <select
+                id="taskPriority"
+                value={priority === null ? "null" : priority}
+                onChange={(e) =>
+                  setPriority(
+                    e.target.value === "null"
+                      ? null
+                      : (e.target.value as "low" | "medium" | "high")
+                  )
+                }
+                disabled={!isEditing}
+                className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70"
+              >
+                <option value="null">Automática</option>
+                <option value="low">Baixa</option>
+                <option value="medium">Média</option>
+                <option value="high">Alta</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
+            <input
+              id="allowAutomaticMove"
+              type="checkbox"
+              checked={!userMovedManually}
+              onChange={(e) => setUserMovedManually(!e.target.checked)}
+              disabled={!isEditing}
+              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            />
+            <label htmlFor="allowAutomaticMove" className="text-sm font-medium">
+              Permitir movimento automático
+            </label>
+          </div>
+
+          <div>
+            <label htmlFor="taskDueDate" className="block text-sm mb-1">
+              Data de Vencimento
+            </label>
+            <input
+              id="taskDueDate"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              disabled={!isEditing}
+              className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              id="taskCompleted"
+              type="checkbox"
+              checked={isCompleted}
+              onChange={(e) => setIsCompleted(e.target.checked)}
+              disabled={!isEditing}
+              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            />
+            <label htmlFor="taskCompleted" className="text-sm font-medium">
+              Tarefa Concluída
+            </label>
+          </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="taskDescription"
-            className="block text-sm font-medium mb-1"
-          >
-            Descrição
-          </label>
-          <textarea
-            id="taskDescription"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            disabled={!isEditing}
-            rows={4}
-            className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="taskCategory"
-            className="block text-sm font-medium mb-1"
-          >
-            Categoria
-          </label>
-          <select
-            id="taskCategory"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            disabled={!isEditing}
-            className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70"
-          >
-            {categories.map((cat) => (
-              <option key={String(cat._id)} value={String(cat._id)}>
-                {cat.title}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="taskPriority"
-            className="block text-sm font-medium mb-1"
-          >
-            Prioridade ({task.isPriorityManual ? 'Manual' : `Automática: ${calculatedPriority === 'low' ? 'Baixa' : calculatedPriority === 'medium' ? 'Média' : 'Alta'}`})
-          </label>
-          <select
-            id="taskPriority"
-            value={priority === null ? 'null' : priority}
-            onChange={(e) =>
-              setPriority(e.target.value === 'null' ? null : e.target.value as 'low' | 'medium' | 'high')
-            }
-            disabled={!isEditing}
-            className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="null">Automatica</option>
-            <option value="low">Baixa</option>
-            <option value="medium">Média</option>
-            <option value="high">Alta</option>
-          </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="taskDueDate"
-            className="block text-sm font-medium mb-1"
-          >
-            Data de Vencimento (Opcional)
-          </label>
-          <input
-            id="taskDueDate"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            disabled={!isEditing}
-            className="w-full bg-[#1A1A2E] rounded-lg px-3 py-2 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            id="taskCompleted"
-            type="checkbox"
-            checked={isCompleted}
-            onChange={(e) => setIsCompleted(e.target.checked)}
-            disabled={!isEditing}
-            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-          />
-          <label htmlFor="taskCompleted" className="text-sm font-medium">
-            Tarefa Concluída
-          </label>
-        </div>
-
-        {/* BOTÕES DE AÇÃO - Renderização Condicional */}
-        <div className="flex gap-4 mt-4">
+        {/* BOTÕES */}
+        <div className="flex flex-col sm:flex-row gap-4 mt-4">
           {isEditing ? (
-            // Botões do modo de EDIÇÃO
             <>
               <button
                 type="button"
@@ -260,11 +267,10 @@ const TaskDetailModal = ({
                 disabled={loading}
                 className="flex-1 bg-green-500 hover:bg-green-600 p-2 rounded-lg disabled:opacity-50"
               >
-                {loading ? "Salvando..." : "Salvar Alterações"}
+                {loading ? "Salvando..." : "Salvar"}
               </button>
             </>
           ) : (
-            // Botões do modo de VISUALIZAÇÃO
             <>
               <button
                 type="button"

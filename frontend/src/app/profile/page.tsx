@@ -7,7 +7,8 @@ import ButtonGeneral from "@/components/ui/ButtonGeneral";
 
 import { Pencil, Lock, Info, CheckCircle2, Crown, AlertTriangle, Trash2 } from "lucide-react";
 import ButtonFull from "@/components/ui/ButtonFull";
-import { loadStripe } from "@stripe/stripe-js";
+import { signOut } from "next-auth/react";
+import { useMessages } from "../context/MessageContext";
 
 const freePlanFeatures = [
   "Criação de tarefas ilimitadas",
@@ -32,6 +33,9 @@ const ProfilePage = () => {
   const [provider, setProvider] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { addMessage } = useMessages();
 
   useEffect(() => {
     if (!provider) {
@@ -71,10 +75,45 @@ const ProfilePage = () => {
     }
   };
 
-  console.log(session);
+  const handleDeleteAccount = async () => {
+    if (!user?.id) {
+      addMessage("Usuário não logado para deletar conta.", "error");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      "Tem certeza que deseja excluir sua conta? Esta ação é irreversível e todos os seus dados (tarefas, categorias, etc.) serão permanentemente removidos."
+    )
+
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/user`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        addMessage(data.message || "Erro ao deletar conta", "error");
+        throw new Error(data.message || "Erro ao deletar conta");
+      }
+
+      addMessage(data.message || "Conta deletada com sucesso!", "success");
+      await signOut({ callbackUrl: "/login" });
+    } catch (error) {
+      console.error("Erro ao deletar conta:", error);
+      addMessage("Erro ao deletar conta", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (loading) {
     return <p>Carregando perfil...</p>;
+  }
+
+  if (!session) {
+    return null;
   }
 
   return (
@@ -195,7 +234,7 @@ const ProfilePage = () => {
             <div className="delete bg-destructive/9 flex flex-col gap-3 p-5 rounded-2xl border border-destructive">
                 <h4 className="font-semibold">Excluir Conta</h4>
                 <p className="text-sm">Depois de excluir sua conta, não há como voltar atrás. Todas as suas tarefas, categorias e dados serão removidos permanentemente.</p>
-                <ButtonGeneral color="bg-destructive/8 border border-destructive">
+                <ButtonGeneral color="bg-destructive/8 border border-destructive" onClick={handleDeleteAccount}>
                     <div className="container flex items-center gap-2 text-destructive text-sm font-semibold">
                         <Trash2 size="1rem" /> <span>Excluir Conta</span>
                     </div>

@@ -2,6 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import Category from "./Category";
 import Task from "./Task";
 import Account from "./Account";
+import PushSubscription from "./PushSubscription";
 
 export interface IUser extends mongoose.Document {
     name: string;
@@ -66,6 +67,7 @@ const UserSchema = new Schema<IUser>({
       await Category.deleteMany({ userId: user._id });
       await Task.deleteMany({ userId: user._id });
       await Account.deleteMany({ userId: user._id });
+      await PushSubscription.deleteMany({ userId: user._id });
 
       next();
 

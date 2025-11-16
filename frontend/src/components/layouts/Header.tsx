@@ -3,7 +3,7 @@
 import { useState, useRef, RefObject } from "react";
 import { Search, LogOut, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { fieldMotion } from "@/utils/motions";
+import { fieldMotion } from "@/app/utils/motions";
 import Link from "next/link";
 import Image from "next/image";
 import { Session } from "next-auth";
@@ -18,7 +18,9 @@ const Header = ({ session }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
-  useClickOutside(menuRef as RefObject<HTMLElement>, () => setIsMenuOpen(false));
+  useClickOutside(menuRef as RefObject<HTMLElement>, () =>
+    setIsMenuOpen(false)
+  );
 
   const user = session.user;
   const userInitials = user?.name ? user.name.charAt(0).toUpperCase() : "?";
@@ -68,36 +70,36 @@ const Header = ({ session }: HeaderProps) => {
           </motion.div>
           <AnimatePresence>
             {isMenuOpen && (
-            <motion.div
-            key="menu"
-              className="absolute top-12 right-0 w-48 bg-primary-foreground/20 backdrop-blur-md rounded-lg shadow-lg border border-primary-foreground/10 p-2 z-50"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <ul className="flex flex-col gap-1">
-                <li>
-                  <Link
-                    href="/profile"
-                    className="flex items-center gap-2 p-2 rounded-md hover:bg-primary-foreground/10"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <UserIcon size={16} />
-                    <span>Meu Perfil</span>
-                  </Link>
-                </li>
-                <li>
-                  <button
-                    onClick={() => signOut({ callbackUrl: "/login" })}
-                    className="w-full flex items-center gap-2 p-2 rounded-md text-red-400 hover:bg-red-500/10"
-                  >
-                    <LogOut size={16} />
-                    <span>Sair</span>
-                  </button>
-                </li>
-              </ul>
-            </motion.div>
-          )}
+              <motion.div
+                key="menu"
+                className="absolute top-12 right-0 w-48 bg-primary-foreground/20 backdrop-blur-md rounded-lg shadow-lg border border-primary-foreground/10 p-2 z-50"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <ul className="flex flex-col gap-1">
+                  <li>
+                    <Link
+                      href="/profile"
+                      className="flex items-center gap-2 p-2 rounded-md hover:bg-primary-foreground/10"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <UserIcon size={16} />
+                      <span>Meu Perfil</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => signOut({ callbackUrl: "/login" })}
+                      className="w-full flex items-center gap-2 p-2 rounded-md text-red-400 hover:bg-red-500/10"
+                    >
+                      <LogOut size={16} />
+                      <span>Sair</span>
+                    </button>
+                  </li>
+                </ul>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </div>

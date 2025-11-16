@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { fieldMotion } from "@/utils/motions";
+import { fieldMotion } from "@/app/utils/motions";
 
 interface FormFieldProps {
   label: string;

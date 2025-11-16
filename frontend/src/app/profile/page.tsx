@@ -9,6 +9,7 @@ import { Pencil, Lock, Info, CheckCircle2, Crown, AlertTriangle, Trash2 } from "
 import ButtonFull from "@/components/ui/ButtonFull";
 import { signOut } from "next-auth/react";
 import { useMessages } from "../context/MessageContext";
+import NotificationSettings from "@/components/ui/NotificationSettings";
 
 const freePlanFeatures = [
   "Criação de tarefas ilimitadas",
@@ -160,6 +161,7 @@ const ProfilePage = () => {
               </ButtonGeneral>
             )}
 
+
             <div className="note flex flex-col gap-2 rounded-2xl bg-warning/13 p-4 border border-warning">
               <header className="flex gap-2 items-center text-warning">
                 <Info size="1rem" />
@@ -173,6 +175,9 @@ const ProfilePage = () => {
             </div>
           </div>
         )}
+        
+        <NotificationSettings />
+
         <div className="subscriptionCard p-8 flex flex-col bg-primary-foreground/4 rounded-2xl gap-5">
           <h3 className="font-semibold text-2xl">Assinatura</h3>
           <div className="details flex flex-col gap-3">

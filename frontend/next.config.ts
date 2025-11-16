@@ -3,7 +3,7 @@ import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  reactCompiler: true,
+  // reactCompiler: true,
   images: {
     remotePatterns: [
       {
@@ -21,6 +21,13 @@ const pwaConfig = {
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+  customWorkerDir: 'public',
+  buildExcludes: [
+     /middleware\.js$/,
+     /middleware-manifest\.json$/,
+     /middleware-runtime\.js$/,
+     /_middleware\.js$/,
+  ],
 };
 
 export default withPWA(pwaConfig)(nextConfig);

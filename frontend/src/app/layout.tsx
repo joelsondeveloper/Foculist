@@ -54,7 +54,7 @@ export default async function RootLayout({
         )}
       </head>
       <body
-        className={`${inter.variable} antialiased p-8 flex flex-col gap-8`}
+        className={`${inter.variable} antialiased p-8 flex flex-col gap-8 overflow-x-hidden`}
         id="root"
       >
         {session && <Header session={session} />}

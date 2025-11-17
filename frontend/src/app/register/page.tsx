@@ -6,6 +6,7 @@ import FormField from "@/components/ui/FormField";
 import ButtonFull from "@/components/ui/ButtonFull";
 import Link from "next/link";
 import Divider from "@/components/ui/Divider";
+import { useMessages } from "../context/MessageContext";
 
 import { ArrowRight } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
@@ -20,17 +21,21 @@ const RegisterPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const { addMessage } = useMessages();
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
     if (password !== confirmPassword) {
       setError("As senhas não coincidem");
+      addMessage("As senhas não coincidem", "error");
       return;
     }
 
     if (!name || !email || !password || !confirmPassword) {
       setError("Preencha todos os campos");
+      addMessage("Preencha todos os campos", "error");
       return;
     }
 
@@ -48,10 +53,12 @@ const RegisterPage = () => {
 
       if (!res.ok) {
         const body = await res.json();
-        throw new Error(body.message || "Ocorreu um erro ao registrar o usuário");
+        addMessage(body.message, "error");
+        return;
       }
 
-      //messagem de sucesso
+      
+      addMessage("Conta criada com sucesso!, Por favor, verifique seu email para ativar sua conta, se não recebeu, verifique sua caixa de spam", "success");
 
     } catch (error) {
       setError((error as Error).message);

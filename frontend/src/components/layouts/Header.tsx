@@ -67,9 +67,10 @@ const Header = ({ session }: HeaderProps) => {
               onClick={handleUpgradeClick}
               color="bg-warning/60 hover:bg-warning/50"
               aria-label="Fazer upgrade para remover anúncios"
+              className="w-full sm:w-auto"
             >
-              <div className="container flex items-center gap-2">
-                <Diamond size="1.2rem" />
+              <div className="container flex items-center justify-center sm:justify-start gap-2 text-sm sm:text-base">
+                <Diamond size="1.1rem" className="sm:size-[1.2rem]" />
                 <span>Remover Anúncios</span>
               </div>
             </ButtonGeneral>
@@ -139,7 +140,7 @@ const Header = ({ session }: HeaderProps) => {
             slot={adsenseSlot1}
             format="auto"
             className=" mx-auto h-fit"
-            testMode={false}
+            testMode={true}
           />
         </div>
       )}

@@ -139,7 +139,7 @@ const Header = ({ session }: HeaderProps) => {
             slot={adsenseSlot1}
             format="auto"
             className=" mx-auto h-fit"
-            testMode={true}
+            testMode={false}
           />
         </div>
       )}

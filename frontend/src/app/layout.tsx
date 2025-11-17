@@ -46,8 +46,11 @@ export default async function RootLayout({
     <html lang="pt-br">
       <head>
         {adsenseClientId && (
-          <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`} crossOrigin="anonymous">
-          </script>
+          <script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
+            crossOrigin="anonymous"
+          ></script>
         )}
       </head>
       <body
@@ -56,7 +59,8 @@ export default async function RootLayout({
       >
         {session && <Header session={session} />}
         <AuthProvider>
-          <MessageProvider session={session}>{children}
+          <MessageProvider session={session}>
+            {children}
             <Chatbot />
           </MessageProvider>
         </AuthProvider>

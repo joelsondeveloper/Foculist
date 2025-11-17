@@ -391,10 +391,7 @@ export default function Home() {
       fetchData();
     }
   };
-
-  if (!session) {
-    return null;
-  }
+  
 
   const tasksByCategoryId: { [key: string]: ITaskClient[] } = categories.reduce(
     (acc, category) => {

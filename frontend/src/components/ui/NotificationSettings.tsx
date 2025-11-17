@@ -7,8 +7,18 @@ import {
   subscribeUserForNotifications,
   unsubscribeUserFromNotifications,
   getNotificationPermissionStatus,
+  registerServiceWorker
 } from "@/lib/notificationUtils";
-import { set } from "date-fns";
+import ButtonGeneral from "./ButtonGeneral";
+import { Send } from "lucide-react";
+
+interface BrowserPushSubscription {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
 
 const NotificationSettings = () => {
   const { data: session } = useSession();
@@ -17,10 +27,19 @@ const NotificationSettings = () => {
   const [loading, setLoading] = useState(true);
   const [permissionStatus, setPermissionStatus] =
     useState<NotificationPermission | null>("default");
+const [sendingTest, setSendingTest] = useState(false);
 
   const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
   useEffect(() => {
+
+    const setupServiceWorker = async () => {
+      if ("serviceWorker" in navigator) {
+        await registerServiceWorker();
+      }
+    };
+    setupServiceWorker();
+
     if (!session?.user?.id || !VAPID_PUBLIC_KEY) {
       setNotificationsEnabled(false);
       setPermissionStatus(getNotificationPermissionStatus());
@@ -40,7 +59,7 @@ const NotificationSettings = () => {
     const checkSubscriptionStatus = async () => {
       setLoading(true);
       try {
-        const registration = await navigator.serviceWorker.getRegistration();
+        const registration = await navigator.serviceWorker.ready;
 
         if (!registration) {
           console.warn("🟡 Nenhuma inscrição encontrada.");
@@ -74,7 +93,7 @@ const NotificationSettings = () => {
     }
     setLoading(true);
     try {
-      const registration = await navigator.serviceWorker.getRegistration();
+      const registration = await navigator.serviceWorker.ready;
       if (!registration) {
         addMessage("Nenhuma inscrição encontrada.", "error");
         setLoading(false);
@@ -85,7 +104,7 @@ const NotificationSettings = () => {
         const subscription = await registration.pushManager.getSubscription();
         if (subscription) {
           const success = await unsubscribeUserFromNotifications(
-            session?.user.id,
+            session?.user.id as string,
             subscription.endpoint
           );
           if (success) {
@@ -97,7 +116,7 @@ const NotificationSettings = () => {
         }
       } else {
         const subscription = await subscribeUserForNotifications(
-          session?.user.id,
+          session?.user.id as string,
           VAPID_PUBLIC_KEY
         );
         if (subscription) {
@@ -137,6 +156,52 @@ const NotificationSettings = () => {
     return <p>Notificação desativada.</p>;
   };
 
+   const handleSendTestNotification = async () => {
+      if (!session?.user?.id) {
+        addMessage(
+          "Você precisa estar logado para enviar uma notificação de teste.",
+          "error"
+        );
+        return;
+      }
+      if (!notificationsEnabled) {
+        addMessage(
+          "As notificações não estão ativas. Ative-as primeiro.",
+          "info"
+        );
+        return;
+      }
+  
+      setSendingTest(true);
+      try {
+        const res = await fetch("/api/notifications/send-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+  
+        const data = await res.json();
+        if (!res.ok) {
+          addMessage(
+            data.message || "Falha ao enviar notificação de teste.",
+            "error"
+          );
+          throw new Error(
+            data.message || "Falha ao enviar notificação de teste."
+          );
+        }
+        addMessage(
+          data.message ||
+            "Notificação de teste enviada! Verifique seu dispositivo.",
+          "success"
+        );
+      } catch (error) {
+        console.error("Erro ao enviar notificação de teste:", error);
+        addMessage("Ocorreu um erro ao enviar a notificação de teste.", "error");
+      } finally {
+        setSendingTest(false);
+      }
+    };
+
   return (
     <div className="notificationCard p-8 flex flex-col bg-primary-foreground/4 rounded-2xl gap-5">
       <h3 className="font-semibold text-xl">Notificações</h3>
@@ -168,6 +233,22 @@ const NotificationSettings = () => {
           </div>
         </label>
       </div>
+      {notificationsEnabled && ( 
+          <ButtonGeneral
+            onClick={handleSendTestNotification}
+            disabled={sendingTest}
+            className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            {sendingTest ? (
+              <span>Enviando teste...</span>
+            ) : (
+              <div className="flex items-center gap-2 justify-center">
+                <Send size="1rem" /> <span>Enviar Teste de Notificação</span>
+              </div>
+            )}
+          </ButtonGeneral>
+        )}
+
       {permissionStatus === "denied" && (
         <p className="text-xs text-red-400">
           Para ativar, você precisa mudar as permissões de notificação do seu

@@ -20,15 +20,23 @@ export async function POST(req: NextRequest) {
   await dbConnect();
 
   try {
-    const subscriptionData = await req.json();
+    const {pushSubscription, userId} = await req.json();
+
+    if (!pushSubscription || !pushSubscription.endpoint || !pushSubscription.keys || !pushSubscription.keys.auth || !pushSubscription.keys.p256dh) {
+        console.error("Dados de inscrição inválidos", pushSubscription);
+        return NextResponse.json(
+            { sucess: false, message: "Dados de inscrição inválidos" },
+            { status: 400 }
+        )
+    }
 
     const existingSubscription = await PushSubscription.findOne({
       userId: session.user.id,
-      endpoint: subscriptionData.endpoint,
+      endpoint: pushSubscription.endpoint,
     });
 
     if (existingSubscription) {
-      existingSubscription.keys = subscriptionData.keys;
+      existingSubscription.keys = pushSubscription.keys;
       await existingSubscription.save();
       console.log(
         `🟡 PushSubscription existente atualizada para user ${session.user.id}`
@@ -40,8 +48,8 @@ export async function POST(req: NextRequest) {
     } else {
       const newSubscription = await PushSubscription.create({
         userId: session.user.id,
-        endpoint: subscriptionData.endpoint,
-        keys: subscriptionData.keys,
+        endpoint: pushSubscription.endpoint,
+        keys: pushSubscription.keys,
       });
       console.log(`🟢 PushSubscription criada para user ${session.user.id}`);
       return NextResponse.json(

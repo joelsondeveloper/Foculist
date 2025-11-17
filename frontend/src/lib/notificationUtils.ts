@@ -11,107 +11,114 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | undefined> {
+export async function registerServiceWorker(): Promise<
+  ServiceWorkerRegistration | undefined
+> {
   if ("serviceWorker" in navigator) {
     try {
-        
-        const registration = await navigator.serviceWorker.register("/sw.js");
-        console.log("🟢 Service Worker registrado com sucesso!", registration);
-        return registration
-        
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      console.log("🟢 Service Worker registrado com sucesso!", registration);
+      return registration;
     } catch (error) {
-        
-        console.error("Erro ao registrar Service Worker:", error);
-
+      console.error("Erro ao registrar Service Worker:", error);
     }
   }
-  return undefined
+  return undefined;
 }
 
-export async function subscribeUserForNotifications(userId: string, vapidPublicKey: string): Promise<PushSubscription | null> {
-    if (!('notifications' in window) || !('serviceWorker' in navigator)) {
-        console.error('Notifications não são suportados pelo navegador.');
-        return null;
+export async function subscribeUserForNotifications(
+  userId: string,
+  vapidPublicKey: string
+): Promise<PushSubscription | null> {
+  console.log("=== INÍCIO da subscribeUserForNotifications ===");
+
+//   if (!("notifications" in window) || !("serviceWorker" in navigator)) {
+//     console.error(
+//       "Notifications não são suportados pelo navegador. (Erro na verificação inicial)"
+//     );
+//     return null;
+//   }
+
+  console.log("Tentando solicitar permissão para notificações...");
+  const permission = await Notification.requestPermission();
+  console.log("Status da permissão de notificação:", permission);
+
+  if (permission !== "granted") {
+    console.warn("Permissão de notificação negada pelo usuário.");
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+    const pushSubscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: convertedVapidKey,
+    });
+
+    const res = await fetch("/api/notifications/subscribe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ pushSubscription }),
+    });
+
+    if (!res.ok) {
+      console.error("Erro ao registrar push subscription:", res.statusText);
+      return null;
     }
 
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-        console.warn('Permissão de notificação negada pelo usuário.');
-        return null;
-    }
-
-    try {
-        
-        const registration = await navigator.serviceWorker.ready;
-        
-        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
-        const pushSubscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: convertedVapidKey
-        });
-        
-        const res = await fetch('/api/notifications/subscribe', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ pushSubscription })
-        });
-
-        if (!res.ok) {
-            console.error('Erro ao registrar push subscription:', res.statusText);
-            return null;
-        }
-
-        return pushSubscription
-
-    } catch (error) {
-        console.error('Erro ao registrar push subscription:', error);
-        return null;
-    }
+    return pushSubscription;
+  } catch (error) {
+    console.error("Erro ao registrar push subscription:", error);
+    return null;
+  }
 }
 
-export async function unsubscribeUserFromNotifications(userId: string, endpoint: string): Promise<boolean> {
-    
-    if (!('serviceWorker' in navigator)) {
-        console.error('Service Worker não são suportados pelo navegador.');
+export async function unsubscribeUserFromNotifications(
+  userId: string,
+  endpoint: string
+): Promise<boolean> {
+  if (!("serviceWorker" in navigator)) {
+    console.error("Service Worker não são suportados pelo navegador.");
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      const successFulUnsubscribe = await subscription.unsubscribe();
+      if (!successFulUnsubscribe) {
+        console.error("Erro ao desinscrever push subscription.");
         return false;
+      }
+      const res = await fetch("/api/notifications/unsubscribe", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ endpoint }),
+      });
+      if (!res.ok) {
+        throw new Error("Erro ao desinscrever push subscription.");
+      }
+      return true;
     }
 
-    try {
-        
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
-
-        if (subscription) {
-            const successFulUnsubscribe = await subscription.unsubscribe();
-            if (!successFulUnsubscribe) {
-                console.error('Erro ao desinscrever push subscription.');
-                return false;
-            }
-            const res = await fetch('/api/notifications/unsubscribe', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ endpoint })
-            });
-            if (!res.ok) {
-                throw new Error('Erro ao desinscrever push subscription.');
-            }
-            return true
-        }
-
-        return true
-    } catch (error) {
-        console.error('Erro ao desinscrever push subscription:', error);
-        return false
-    }
+    return true;
+  } catch (error) {
+    console.error("Erro ao desinscrever push subscription:", error);
+    return false;
+  }
 }
 
 export function getNotificationPermissionStatus(): NotificationPermission {
-    if (!('Notification' in window)) {
-        return 'denied';
-    }
-    return Notification.permission;
+  if (!("Notification" in window)) {
+    return "denied";
+  }
+  return Notification.permission;
 }

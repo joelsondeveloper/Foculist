@@ -40,8 +40,16 @@ export default async function RootLayout({
 }>) {
   const session = await getServerSession(authOptions);
 
+  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+
   return (
     <html lang="pt-br">
+      <head>
+        {adsenseClientId && (
+          <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`} crossOrigin="anonymous">
+          </script>
+        )}
+      </head>
       <body
         className={`${inter.variable} antialiased p-8 flex flex-col gap-8`}
         id="root"

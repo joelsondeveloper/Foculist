@@ -2,72 +2,87 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
-import sgMail from "@sendgrid/mail";
-import crypto from "crypto";
-import VerificationToken from "@/models/VerificationToken";
-import Category, { CategoryCreateDTO, ICategory, ICategoryClient } from "@/models/Category";
+import Category from "@/models/Category";
 import { getDefaultCategories } from "@/lib/getDefaultCategories";
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY as string);
+import {
+  isVerificationEmailConfigured,
+  sendVerificationEmail,
+} from "@/lib/sendVerificationEmail";
 
 export async function POST(request: Request) {
-  await dbConnect();
+  let body: { name?: unknown; email?: unknown; password?: unknown };
   try {
-    const { name, email, password } = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ success: false, message: "Dados inválidos" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ success: false, message: "Dados inválidos" }, { status: 400 });
+  }
 
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { sucess: false, message: "Preencha todos os campos" },
-        { status: 400 }
-      );
-    }
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const password = typeof body.password === "string" ? body.password : "";
 
-    const existingUser = await User.findOne({ email });
+  if (!name || !email || !password) {
+    return NextResponse.json(
+      { success: false, message: "Preencha todos os campos" },
+      { status: 400 }
+    );
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json(
+      { success: false, message: "E-mail inválido" },
+      { status: 400 }
+    );
+  }
 
+  if (!isVerificationEmailConfigured()) {
+    console.error("Cadastro indisponível: SENDGRID_API_KEY não configurada");
+    return NextResponse.json(
+      { success: false, message: "Cadastro indisponível no momento. Tente novamente mais tarde." },
+      { status: 503 }
+    );
+  }
+
+  try {
+    await dbConnect();
+
+    const existingUser = await User.findOne({ email }).select("+password");
     if (existingUser) {
-      return NextResponse.json(
-        { sucess: false, message: "Usuário já cadastrado" },
-        { status: 409 }
-      );
+      if (existingUser.emailVerified || !existingUser.password ||
+          !(await bcrypt.compare(password, existingUser.password))) {
+        return NextResponse.json(
+          { success: false, message: "Usuário já cadastrado" },
+          { status: 409 }
+        );
+      }
+
+      // A previous delivery may have failed. Allow the same person to retry.
+      if (!(await Category.exists({ userId: existingUser._id }))) {
+        await Category.insertMany(getDefaultCategories(String(existingUser._id)));
+      }
+      await sendVerificationEmail(email, request.url);
+      return NextResponse.json({ success: true, resent: true }, { status: 200 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await User.create({ name, email, password: hashedPassword });
-
-    console.log("🟡 Criando categorias padrão para:", user._id);
     await Category.insertMany(getDefaultCategories(String(user._id)));
-    console.log("🟢 Categorias criadas!");
 
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const tokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
-
-    await VerificationToken.create({
-      identifier: email,
-      token: verificationToken,
-      expires: tokenExpiresAt,
-    });
-
-    const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${verificationToken}`;
-
-    const msg = {
-      to: email,
-      from: "vicentejoelson80@gmail.com",
-      subject: "Verifique seu e-mail - Focuslist",
-      html: `<p>Clique <a href="${verificationUrl}">aqui</a> para verificar seu e-mail e ativar sua conta.</p>`,
-    };
-
-    try {
-      await sgMail.send(msg);
-    } catch (error) {
-      console.error("Erro ao enviar o e-mail de verificação:", error);
-    }
+    // Report delivery failures: an unverified account cannot sign in.
+    // The user can resubmit the form with the same password to retry.
+    await sendVerificationEmail(email, request.url);
 
     return NextResponse.json(
-      { sucess: true, data: { name: user.name, email: user.email } },
+      { success: true, data: { name: user.name, email: user.email } },
       { status: 201 }
     );
   } catch (error) {
-    return NextResponse.json({ sucess: false, error }, { status: 400 });
+    console.error("Erro ao cadastrar usuário ou enviar verificação:", error);
+    return NextResponse.json(
+      { success: false, message: "Não foi possível concluir o cadastro. Tente novamente." },
+      { status: 503 }
+    );
   }
 }

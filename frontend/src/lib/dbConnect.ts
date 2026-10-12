@@ -23,8 +23,13 @@ global.mongooseCache = globalCache;
 const cached = global.mongooseCache;
 
 async function dbConnect(): Promise<Mongoose> {
-    if (cached.conn) {
+    if (cached.conn?.connection.readyState === 1) {
         return cached.conn;
+    }
+
+    if (cached.conn) {
+        cached.conn = null;
+        cached.promise = null;
     }
 
     if (!cached.promise) {
@@ -32,8 +37,14 @@ async function dbConnect(): Promise<Mongoose> {
             bufferCommands: false,
         });
     }
-    cached.conn = await cached.promise;
-    return cached.conn;
+    try {
+        cached.conn = await cached.promise;
+        return cached.conn;
+    } catch (error) {
+        // A temporary Atlas/network failure must not poison this process forever.
+        cached.promise = null;
+        throw error;
+    }
     }
 
 export default dbConnect

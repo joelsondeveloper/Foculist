@@ -1,4 +1,4 @@
-import NextAuth, { AuthOptions } from "next-auth";
+import { AuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { MongoDBAdapter } from "@next-auth/mongodb-adapter";
@@ -7,7 +7,6 @@ import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
 import Category from "@/models/Category";
-import mongoose from "mongoose";
 import { getDefaultCategories } from "./getDefaultCategories";
 
 export const authOptions: AuthOptions = {
@@ -17,8 +16,9 @@ export const authOptions: AuthOptions = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      // Only verified Google emails are accepted in signIn below.
+      allowDangerousEmailAccountLinking: true,
     }),
-
     Credentials({
       name: "Credentials",
       credentials: {
@@ -26,34 +26,29 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email e senha são obrigatórios");
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         await dbConnect();
-
-        const user = await User.findOne({ email: credentials.email }).select(
-          "+password"
-        );
-        if (!user) throw new Error("Usuário não encontrado");
-
-        if (!user.emailVerified) {
-          throw new Error(
-            "Por favor, verifique seu e-mail antes de fazer login."
-          );
-        }
+        const user = await User.findOne({
+          email: credentials.email.trim().toLowerCase(),
+        }).select("+password");
+        if (!user?.password) return null;
 
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
-        if (!isPasswordValid) throw new Error("Senha inválida");
+        if (!isPasswordValid) return null;
+
+        if (!user.emailVerified) {
+          throw new Error("Por favor, verifique seu e-mail antes de fazer login.");
+        }
 
         return {
           id: user._id.toString(),
           name: user.name,
           email: user.email,
-          plan: user.plan,
+          plan: user.plan || "free",
         };
       },
     }),
@@ -61,98 +56,49 @@ export const authOptions: AuthOptions = {
 
   events: {
     async createUser({ user }) {
-      if (user.id) {
-        try {
-          const defaultCategories = [
-            { title: "Atrasado", color: "#EF4444", userId: user.id },
-            { title: "Hoje", color: "#3B82F6", userId: user.id },
-            { title: "Em andamento", color: "#F97316", userId: user.id },
-            { title: "Concluído", color: "#22C55E", userId: user.id },
-          ];
-          await Category.insertMany(defaultCategories);
-        } catch (error) {
-          console.error("Erro ao criar categorias padrão:", error);
+      if (!user.id) return;
+      try {
+        await dbConnect();
+        // NextAuth also emits createUser when linking a verified Google email
+        // to an existing user. Do not duplicate that user's categories.
+        if (!(await Category.exists({ userId: user.id }))) {
+          await Category.insertMany(getDefaultCategories(user.id));
         }
+      } catch (error) {
+        console.error("Erro ao criar categorias padrão:", error);
+      }
+    },
+    async linkAccount({ user, account }) {
+      if (account.provider !== "google") return;
+      try {
+        await dbConnect();
+        await User.updateOne(
+          { _id: user.id, emailVerified: null },
+          { $set: { emailVerified: new Date() } }
+        );
+      } catch (error) {
+        console.error("Erro ao confirmar e-mail do Google:", error);
       }
     },
   },
 
-  session: {
-    strategy: "jwt",
-  },
+  session: { strategy: "jwt" },
 
   callbacks: {
-    async signIn({ user, account }) {
-      await dbConnect();
-
-      const existingUser = await User.findOne({ email: user.email });
-
-      if (existingUser) {
-        if (account?.provider === "google") {
-          const db = mongoose.connection.db;
-          if (!db) throw new Error("Banco de dados não conectado");
-
-          const accountsCollection = db.collection("accounts");
-
-          const accountExists = await accountsCollection.findOne({
-            userId: existingUser._id,
-            provider: "google",
-          });
-
-          if (!accountExists) {
-            await accountsCollection.insertOne({
-              userId: existingUser._id,
-              type: account.type,
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-              access_token: account.access_token,
-              token_type: account.token_type,
-              scope: account.scope,
-            });
-          }
-        }
-
-        if (!existingUser.plan) {
-          existingUser.plan = "free";
-          await existingUser.save();
-        }
-      } else {
-        const newUser = await User.create({
-          name: user.name,
-          email: user.email,
-          image: user.image || "",
-          plan: "free",
-          stripeCustomerId: "",
-          subscriptionId: "",
-          subscriptionEndDate: null,
-        });
-        if (account?.provider === "google") {
-          const db = mongoose.connection.db;
-          if (!db) throw new Error("Banco de dados não conectado");
-
-          await db.collection("accounts").insertOne({
-            userId: newUser._id,
-            type: account.type,
-            provider: account.provider,
-            providerAccountId: account.providerAccountId,
-            access_token: account.access_token,
-            token_type: account.token_type,
-            scope: account.scope,
-          });
-        }
-
-        await Category.insertMany(getDefaultCategories(newUser._id));
-      }
-
-      return true;
+    async signIn({ account, profile }) {
+      // The adapter owns OAuth user creation and account linking. Writing those
+      // records here caused duplicate users/accounts and invalid sessions.
+      const googleProfile = profile as (typeof profile & { email_verified?: boolean }) | undefined;
+      return account?.provider !== "google" || googleProfile?.email_verified === true;
     },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+      } else if (!token.id && token.sub) {
+        token.id = token.sub;
       }
       return token;
     },
-
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
@@ -161,19 +107,12 @@ export const authOptions: AuthOptions = {
         const userFromDb = await User.findById(token.id)
           .select("plan")
           .lean<{ plan?: string }>();
-
-        if (userFromDb) {
-          session.user.plan = userFromDb.plan || "free";
-        }
+        session.user.plan = userFromDb?.plan === "premium" ? "premium" : "free";
       }
-
       return session;
     },
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-
-  pages: {
-    signIn: "/login",
-  },
+  pages: { signIn: "/login" },
 };

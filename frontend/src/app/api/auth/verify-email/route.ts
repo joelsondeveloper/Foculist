@@ -4,33 +4,33 @@ import User from "@/models/User";
 import VerificationToken from "@/models/VerificationToken";
 
 export async function GET(request: NextRequest) {
+  const token = request.nextUrl.searchParams.get("token");
+  if (!token) {
+    return NextResponse.json({ message: "Token não encontrado" }, { status: 400 });
+  }
+
+  try {
     await dbConnect();
-
-    const token = request.nextUrl.searchParams.get("token");
-
-    if (!token) {
-        return NextResponse.json({ message: "Token não encontrado" }, { status: 400 });
-    }
-
     const storedToken = await VerificationToken.findOne({ token });
-
-    if (!storedToken) {
-        return NextResponse.json({ message: "Token inválido" }, { status: 400 });
-    }
-
-    if (new Date() > storedToken.expires) {
-        return NextResponse.json({ message: "Token expirado" }, { status: 400 });
+    if (!storedToken || new Date() > storedToken.expires) {
+      return NextResponse.json({ message: "Token inválido ou expirado" }, { status: 400 });
     }
 
     const user = await User.findOne({ email: storedToken.identifier });
-
     if (!user) {
-        return NextResponse.json({ message: "Usuário não encontrado" }, { status: 404 });
+      return NextResponse.json({ message: "Usuário não encontrado" }, { status: 404 });
     }
 
     user.emailVerified = new Date();
     await user.save();
     await VerificationToken.findByIdAndDelete(storedToken._id);
 
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/login?verified=true`);
+    return NextResponse.redirect(new URL("/login?verified=true", request.url));
+  } catch (error) {
+    console.error("Erro ao verificar e-mail:", error);
+    return NextResponse.json(
+      { message: "Não foi possível verificar o e-mail no momento" },
+      { status: 503 }
+    );
+  }
 }

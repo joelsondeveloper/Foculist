@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import FormField from "@/components/ui/FormField";
@@ -17,6 +17,17 @@ const RegisterPage = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("verified") === "true") {
+      setNotice("E-mail confirmado. Você já pode entrar.");
+    }
+    if (params.has("error")) {
+      setError("Não foi possível entrar com o Google. Tente novamente.");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -38,13 +49,21 @@ const RegisterPage = () => {
       });
 
       if (res?.error) {
-        setError(res.error || "Email ou senha inválidos");
+        setError(
+          res.error.includes("verifique seu e-mail")
+            ? res.error
+            : res.error === "CredentialsSignin"
+              ? "E-mail ou senha inválidos."
+              : "Não foi possível entrar no momento. Tente novamente."
+        );
         return;
       } else if (res?.ok) {
         router.push("/");
+      } else {
+        setError("Não foi possível entrar no momento. Tente novamente.");
       }
 
-    } catch (error) {
+    } catch {
       setError("Ocorreu um erro ao fazer login");
     } finally {
       setLoading(false);
@@ -75,6 +94,7 @@ const RegisterPage = () => {
           />
         </div>
         {error && <p className="text-red-500 text-sm text-center bg-red-500/10 p-2 rounded-md">{error}</p>}
+        {notice && <p className="text-green-500 text-sm text-center bg-green-500/10 p-2 rounded-md">{notice}</p>}
         <div className="action flex flex-col gap-5">
           <ButtonFull color="bg-success" type="submit" disabled={loading}>
             <span className="font-semibold">{loading ? "Entrando..." : "Entrar"}</span>

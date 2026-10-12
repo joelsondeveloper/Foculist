@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import FormField from "@/components/ui/FormField";
 import ButtonFull from "@/components/ui/ButtonFull";
 import Link from "next/link";
@@ -13,7 +12,6 @@ import { FcGoogle } from "react-icons/fc";
 import { signIn } from "next-auth/react";
 
 const RegisterPage = () => {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,17 +49,24 @@ const RegisterPage = () => {
         body: JSON.stringify({ name, email, password }),
       })
 
+      const body = await res.json();
       if (!res.ok) {
-        const body = await res.json();
-        addMessage(body.message, "error");
+        const message = body.message || "Não foi possível criar a conta. Tente novamente.";
+        setError(message);
+        addMessage(message, "error");
         return;
       }
 
       
-      addMessage("Conta criada com sucesso!, Por favor, verifique seu email para ativar sua conta, se não recebeu, verifique sua caixa de spam", "success");
+      addMessage(
+        body.resent
+          ? "Enviamos outro link de ativação. Verifique seu e-mail e a pasta de spam."
+          : "Conta criada. Verifique seu e-mail e a pasta de spam para ativá-la.",
+        "success"
+      );
 
-    } catch (error) {
-      setError((error as Error).message);
+    } catch {
+      setError("Não foi possível concluir o cadastro. Tente novamente.");
     } finally {
       setLoading(false);
     }
